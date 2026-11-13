@@ -1,0 +1,1087 @@
+# PROJECT: DEAR STRANGER
+## Full-Stack Anonymous Letter and Conversation Platform
+
+You are an expert full-stack software engineering team consisting of:
+- Senior product architect
+- Senior frontend engineer
+- Senior backend engineer
+- UI/UX and visual designer
+- PostgreSQL database architect
+- Application security engineer
+- Privacy engineer
+- Quality assurance engineer
+
+Your task is to DESIGN, BUILD, TEST AND FIX a complete, functional, responsive web application called **Dear Stranger**.
+
+This is a real software project, not a UI demonstration, static landing page, clickable prototype, or mock social media application.
+
+Build the complete application in this session. Implement actual functionality, database persistence, authentication, access controls, error handling and responsive interfaces. Run available checks, fix failures and verify the major user journeys before declaring completion.
+
+Do not stop after generating the homepage.
+
+Do not use fake data as a substitute for working backend functionality. Do not create buttons that do nothing. Do not claim a feature is implemented unless it works.
+
+If an external service requires credentials or dashboard configuration, implement its integration, document the exact configuration required, and provide a graceful setup state until credentials are supplied.
+
+---
+
+# 1. PRODUCT VISION
+
+Dear Stranger is an anonymous letter and conversation platform built around a simple idea:
+
+"Some things are easier to tell a stranger."
+
+People can write things they have never said aloud, share experiences, ask questions, express difficult thoughts, tell stories, seek another perspective or simply put their feelings into words.
+
+Other people can read those letters and respond thoughtfully.
+
+The platform should encourage meaningful human interaction without the pressure of popularity, followers, personal branding or public identity.
+
+It is not another influencer-focused social network.
+
+It should feel like a thoughtfully designed digital reading and writing space.
+
+## Core product principles
+
+1. Anonymity by default.
+2. Meaningful conversations over popularity.
+3. No public follower counts.
+4. No public popularity rankings.
+5. No selling or revealing user identities.
+6. No fake engagement or fabricated content.
+7. No unsolicited private messages.
+8. Respectful communication.
+9. Safety and privacy built into the architecture.
+10. The core experience must remain simple and accessible.
+
+Initial audience: adults aged 18 and above.
+
+Initial language: English.
+
+Design the data model so additional languages can be introduced later.
+
+---
+
+# 2. TECHNICAL ARCHITECTURE
+
+Use the full-stack environment provided by Google AI Studio Build mode.
+
+Preferred implementation:
+- React frontend.
+- TypeScript.
+- Node.js server-side runtime.
+- Modern component-based architecture.
+- Supabase PostgreSQL database.
+- Supabase Auth.
+- Supabase Storage only where genuinely required.
+- Tailwind CSS or an equivalent maintainable styling solution.
+- Cloud Run deployment compatibility.
+
+Use the framework and runtime actually supported by the generated project. Do not introduce Next.js or another framework if it conflicts with the available AI Studio runtime.
+
+Use a clean modular architecture.
+
+Separate:
+- UI components
+- Page components
+- Application services
+- Database access
+- Authentication
+- Validation
+- Authorization
+- Moderation
+- Notifications
+- Sharing and card generation
+- Server routes or server actions
+
+All privileged database operations must execute on the server.
+
+Use environment variables for credentials.
+
+Never expose server secrets in browser code, source maps, client bundles or public configuration.
+
+Use the current Supabase publishable and secret key conventions. Do not confuse a publishable API key with an authenticated user session.
+
+Do not implement a second database merely for convenience.
+
+If Supabase credentials are unavailable, provide a clear setup screen and development-safe preview state. Never silently use localStorage as the permanent production database.
+
+---
+
+# 3. VISUAL DESIGN SYSTEM
+
+The design must look professionally designed, mature, understated and intentional.
+
+Avoid the typical AI-generated neon aesthetic.
+
+Absolutely avoid:
+- Neon gradients.
+- Purple and blue glowing interfaces.
+- Excessive glassmorphism.
+- Glowing borders.
+- Random decorative blobs.
+- Unnecessary animated backgrounds.
+- Excessive rounded cards.
+- Oversized dashboard widgets.
+- Artificially futuristic visuals.
+- Excessive emojis.
+- Generic AI-generated startup landing page layouts.
+
+## Design direction
+
+Combine editorial publishing design with modern minimal web application design.
+
+The interface should feel like a carefully designed independent literary publication.
+
+### Colour palette
+
+Use this palette consistently:
+
+- Warm ivory background: #F8F7F3
+- Main text: #252525
+- Secondary text: #77736D
+- Border: #E8E5DF
+- Muted burgundy accent: #80545A
+- White surfaces: #FFFFFF
+- Subtle muted surface: #F1EFE9
+
+Use the accent sparingly.
+
+Do not introduce additional bright colours without a functional reason.
+
+### Typography
+
+Use:
+- An elegant serif font for prominent editorial headings and selected letter titles.
+- A clean sans-serif font for navigation, buttons, forms and interface labels.
+- Highly readable body text.
+
+Use a consistent type scale and sensible line lengths.
+
+Letter content must be comfortable to read.
+
+### Layout
+
+- Generous whitespace.
+- Subtle borders.
+- Consistent alignment.
+- Restrained shadows.
+- Small, purposeful transitions.
+- Clear visual hierarchy.
+- Consistent spacing.
+- Accessible contrast.
+- Responsive layouts.
+
+Avoid putting every element inside a separate card.
+
+Use cards where they improve content organisation, not as a default design habit.
+
+### Responsiveness
+
+The entire application must work on:
+- Desktop.
+- Laptop.
+- Tablet.
+- Mobile phones.
+
+The mobile experience is especially important because users will frequently share letters through WhatsApp and social platforms.
+
+Create an optional dark theme using the same restrained design language.
+
+Persist the user's theme preference.
+
+---
+
+# 4. BRANDING
+
+Product name: Dear Stranger.
+
+Main tagline:
+
+"Some things are easier to tell a stranger."
+
+Create a simple, refined wordmark.
+
+A small envelope, handwritten mark or similarly restrained symbol may accompany the wordmark.
+
+Do not use a complicated logo.
+
+Create a favicon and appropriate application metadata.
+
+The brand should feel human, warm, thoughtful and trustworthy.
+
+---
+
+# 5. APPLICATION STRUCTURE
+
+Build the following functional pages.
+
+## A. Homepage
+
+The homepage should immediately communicate the purpose of the platform.
+
+Include:
+- Dear Stranger wordmark.
+- Short introductory statement.
+- "Write a Letter" primary action.
+- "Explore Letters" secondary action.
+- A selection of recent public letters.
+- A small explanation of how the platform works.
+- A subtle community/safety statement.
+- Footer with useful links.
+
+Suggested headline:
+
+"Some things are easier to tell a stranger."
+
+Suggested supporting text:
+
+"A place to share what is on your mind, discover perspectives and connect through words."
+
+Do not create exaggerated marketing copy.
+
+Visitors should be able to explore public letters without creating an account.
+
+## B. Explore Letters
+
+Create a working public letter feed.
+
+Features:
+- Latest letters.
+- Random discovery.
+- Category filters.
+- Search.
+- Pagination or efficient infinite loading.
+- Empty states.
+- Loading states.
+- Error states.
+
+Never expose private or unlisted letters in public discovery.
+
+### Categories
+
+Create these initial categories:
+
+1. Life
+2. Relationships
+3. Family
+4. School & Career
+5. Personal Growth
+6. Confessions
+7. Questions
+8. Random Thoughts
+
+Categories should be managed through the database rather than hardcoded throughout the application.
+
+### Surprise Me
+
+Create a distinctive feature called "Surprise Me".
+
+It should select a random eligible public letter from the database.
+
+It must not simply select the first item in the feed.
+
+Avoid repeatedly returning the same letter when other eligible letters exist.
+
+Do not expose private, unlisted, removed or restricted content.
+
+## C. Letter Detail Page
+
+Every public letter should have a unique, shareable URL.
+
+Display:
+- Letter title, if supplied.
+- Letter body.
+- Category.
+- Anonymous display nickname.
+- Publication date.
+- Reactions.
+- Replies.
+- Share action.
+- Report action.
+
+Do not expose:
+- Email addresses.
+- Authentication IDs.
+- IP addresses.
+- Private profile information.
+- Internal moderation information.
+
+Unlisted letters should be accessible through their valid direct link but excluded from public search, feeds and discovery.
+
+Private letters should not be implemented in the initial public release. Keep the data architecture extensible for them later.
+
+## D. Write a Letter
+
+Create a clean, distraction-free writing interface.
+
+Fields:
+- Optional title.
+- Letter body.
+- Category.
+- Visibility selection: Public or Unlisted.
+- Optional sharing permission.
+
+Provide a live character counter.
+
+Use sensible minimum and maximum lengths. Start with a minimum of 20 characters and maximum of 10,000 characters.
+
+Show a clear publishing confirmation.
+
+Provide validation and useful error messages.
+
+Do not automatically publish incomplete or invalid submissions.
+
+Users must be able to save a draft locally or to their authenticated account where practical. Drafts must never become public without explicit publication.
+
+## E. Reply System
+
+Readers can respond to letters.
+
+Rules:
+- Reading does not require an account.
+- Writing and replying require an authenticated anonymous account.
+- Replies are public on public letters.
+- Unlisted letters can receive replies through their direct link.
+- The original author can respond to replies.
+- Support one nested response level only.
+- Prevent replies to deleted or locked letters.
+- Display replies in a readable chronological order.
+
+Avoid creating an infinite nested discussion structure.
+
+Allow users to edit or delete their own replies.
+
+## F. Reactions
+
+Implement these reactions:
+
+- I hear you.
+- Sending strength.
+- I understand.
+- This made me smile.
+- Thank you for sharing.
+
+A user can react to a letter.
+
+Prevent duplicate reactions of the same type by the same account on the same letter.
+
+Allow users to change or remove their reaction.
+
+Avoid prominent competitive like counts.
+
+Show restrained reaction totals or labels.
+
+---
+
+# 6. ANONYMOUS IDENTITY AND AUTHENTICATION
+
+Use Supabase Auth.
+
+Implement persistent anonymous identities.
+
+Each user receives a randomly generated display nickname, for example:
+
+- SilentCloud_27
+- PaperMoon_14
+- WanderingInk_08
+
+Allow users to change their public nickname.
+
+The public nickname must not reveal their real identity.
+
+## Anonymous account behaviour
+
+A visitor can browse without authentication.
+
+When they attempt to write, reply, react or save a letter, provide a clear anonymous account creation or continuation flow.
+
+Use Supabase anonymous sign-in for the initial anonymous account.
+
+Persist the session securely.
+
+Important: anonymous Supabase users cannot recover the same identity after losing their session unless they link a permanent authentication method. Do not falsely promise recovery.
+
+Provide an optional account protection flow that allows a user to link and verify an email address or another supported authentication identity without losing their existing account data.
+
+Make the recovery limitation clear before users rely on an unlinked anonymous account.
+
+Do not require real names or public personal details.
+
+Do not expose authentication identifiers.
+
+Enable the appropriate Supabase anonymous sign-in settings and configure CAPTCHA protection before public launch.
+
+Use secure session handling.
+
+Use authorization checks on the server and Row Level Security in PostgreSQL.
+
+---
+
+# 7. PERSONAL DASHBOARD
+
+Create a personal dashboard accessible only to the authenticated owner.
+
+Sections:
+
+1. My Letters
+2. My Replies
+3. Conversations
+4. Saved Letters
+5. Notifications
+6. Account Settings
+7. Privacy Settings
+
+### My Letters
+
+Display the user's own letters and their visibility status.
+
+Allow the owner to:
+- Edit their own letter.
+- Delete their own letter.
+- Change visibility where allowed.
+- View responses.
+
+### My Replies
+
+Show replies written by the user.
+
+Allow editing and deletion of their own replies.
+
+### Conversations
+
+Show the letters and reply threads in which the user has participated.
+
+### Saved Letters
+
+Allow users to save and unsave letters.
+
+Saved letters must be private to the owner.
+
+### Account settings
+
+Allow users to:
+- Change their display nickname.
+- Manage linked recovery identity.
+- Change theme.
+- Manage notification preferences.
+- Request account deletion.
+
+Do not display sensitive account details publicly.
+
+---
+
+# 8. SHARE STUDIO
+
+Build a dedicated Share Studio.
+
+This is an important product feature and must work.
+
+Users should be able to share their own letters and eligible public letters.
+
+Provide two main formats:
+
+## Format 1: Full Letter Card
+
+A complete shareable representation of the letter.
+
+## Format 2: Excerpt Card
+
+The user selects an excerpt from the letter and generates a smaller quote-style card.
+
+Allow the user to select from three controlled templates:
+
+1. Editorial paper.
+2. Minimal monochrome.
+3. Letter stationery.
+
+Allow light and dark card variants.
+
+Use the established brand colours and typography.
+
+Do not allow arbitrary colours that destroy brand consistency.
+
+Allow the user to preview the card before export.
+
+Generate a downloadable high-quality PNG image using an appropriate client-side rendering library.
+
+Include:
+- Dear Stranger wordmark.
+- Letter text or selected excerpt.
+- Optional category label.
+- Subtle original-letter URL or QR code.
+
+Do not reveal author account identifiers or personal information.
+
+Provide:
+- Download image.
+- Copy link.
+- Native share-sheet support where available.
+- WhatsApp sharing.
+- Facebook sharing.
+- X sharing.
+- Instructions for Instagram Stories.
+
+Important: do not pretend a website can directly publish to Instagram Stories through an unsupported public API. For Instagram, generate the card and provide a download/native sharing workflow.
+
+Respect individual letter sharing permissions.
+
+Do not allow sharing of removed, private or restricted content.
+
+Create appropriate Open Graph metadata for public letter URLs so that shared links display attractive previews in messaging applications and social platforms.
+
+Ensure that Open Graph previews do not expose unlisted or restricted content.
+
+---
+
+# 9. COMMUNICATION AND NOTIFICATIONS
+
+Do not implement private direct messaging in the initial release.
+
+Implement an in-app notification centre.
+
+Notifications should be created for:
+- A reply to a user's letter.
+- A response to a user's reply.
+- Important account security events.
+- Moderation decisions involving the user's content.
+
+Allow notifications to be marked as read.
+
+Provide optional email notifications through Resend.
+
+Email notifications should be configurable by the user.
+
+Never send marketing emails without appropriate consent.
+
+Create attractive, restrained email templates consistent with Dear Stranger branding.
+
+Do not expose another user's email address.
+
+If email integration is not configured, in-app notifications must still function.
+
+---
+
+# 10. OPEN LETTERBOX
+
+Create a feature called "Open Letterbox".
+
+This is a discovery section for letters that could benefit from thoughtful responses.
+
+Possible discovery labels:
+- Someone needs encouragement.
+- Someone has a question.
+- Someone needs another perspective.
+- Someone wants to be heard.
+
+Use categories, moderation status and response status to help identify eligible letters.
+
+Do not infer mental-health diagnoses or expose sensitive personal information.
+
+Do not falsely label a person as being in crisis.
+
+The Open Letterbox must use real database content and must exclude restricted content.
+
+Its purpose is to help meaningful letters receive responses, not to create a popularity ranking.
+
+---
+
+# 11. LETTER OF THE DAY
+
+Create a Letter of the Day feature.
+
+An administrator can select a suitable public letter.
+
+Selection must be editorial/moderator controlled, not determined by popularity or reactions.
+
+Only eligible public letters can be featured.
+
+If no letter has been selected, hide the section gracefully or show an appropriate empty state.
+
+---
+
+# 12. MODERATION AND SAFETY
+
+Build a functional administrator moderation dashboard.
+
+Only authorised administrators can access it.
+
+Do not use a publicly accessible frontend flag as the sole admin permission mechanism.
+
+Use server-verified admin authorization.
+
+Create these moderation capabilities:
+
+- View reported letters.
+- View reported replies.
+- View reported accounts.
+- Review report reasons.
+- Remove or restore content.
+- Lock conversations.
+- Restrict or suspend accounts.
+- Review previous moderation decisions.
+- Handle appeals.
+- Record moderation notes.
+- View a moderation audit trail.
+- Manage categories.
+- Select Letter of the Day.
+- Manage platform announcements.
+
+Users should be able to:
+- Report a letter.
+- Report a reply.
+- Report an account.
+- Block an account.
+- Appeal a moderation action where appropriate.
+
+Create clear community guidelines.
+
+Support report reasons such as:
+- Harassment or bullying.
+- Threats.
+- Hate or discriminatory abuse.
+- Spam or scams.
+- Sexual exploitation.
+- Personal information exposure.
+- Self-harm or immediate safety concern.
+- Other.
+
+Create a safety-conscious moderation workflow.
+
+Do not treat every mention of sadness or difficult experiences as a violation.
+
+Use server-side validation and basic rule-based content checks to flag suspicious submissions for review.
+
+Do not automatically make high-impact moderation decisions based only on a keyword match.
+
+Provide an appropriate urgent safety message for potentially imminent harm, encouraging users to contact emergency services or trusted people. Do not present the platform as a crisis-response service.
+
+The platform is intended for adults 18+.
+
+Implement an age confirmation during onboarding. Do not claim this is robust identity or age verification.
+
+---
+
+# 13. SECURITY AND PRIVACY REQUIREMENTS
+
+This is a core engineering requirement.
+
+Implement:
+
+1. Supabase Row Level Security on every user-owned or sensitive table.
+2. Server-side authorization for privileged actions.
+3. Strict input validation.
+4. Output escaping and safe rendering.
+5. Rate limiting for account creation, posting, replying, reactions and reporting.
+6. CAPTCHA integration for anonymous account creation and abuse-sensitive actions.
+7. Protection against duplicate submissions.
+8. Protection against spam.
+9. Safe handling of URL parameters.
+10. Secure session handling.
+11. Appropriate HTTP security headers.
+12. No secrets in frontend code.
+13. No public exposure of internal moderation records.
+14. No public exposure of email addresses or IP addresses.
+15. No arbitrary HTML execution from user-submitted content.
+16. Safe deletion and account cleanup workflows.
+17. Appropriate logging without unnecessary personal data.
+
+Use plain text or a safe restricted Markdown subset for user-generated content. Do not render arbitrary HTML.
+
+Do not collect IP addresses unless necessary for a defined security purpose, and never expose them to other users.
+
+If IP-based abuse controls are used, minimise retention and document their purpose.
+
+Provide a privacy policy and community guidelines page with honest, editable content. Do not claim legal compliance has been independently certified.
+
+Design with the Nigeria Data Protection Act and relevant privacy obligations in mind.
+
+---
+
+# 14. DATABASE DESIGN
+
+Use PostgreSQL through Supabase.
+
+Create and apply actual SQL migrations.
+
+Use UUID primary keys where appropriate.
+
+Use foreign keys, indexes, constraints and timestamps.
+
+Create a well-normalised database with at least these logical tables:
+
+## profiles
+
+- id: references auth.users
+- display_name
+- created_at
+- updated_at
+- account_status
+- preferred_theme
+- preferred_language
+- age_confirmed_at
+- optional public avatar identifier, if used
+
+## categories
+
+- id
+- name
+- slug
+- description
+- is_active
+- sort_order
+
+## letters
+
+- id
+- author_id
+- title
+- body
+- category_id
+- visibility
+- status
+- allow_external_sharing
+- created_at
+- updated_at
+- published_at
+- deleted_at
+
+Visibility values:
+- public
+- unlisted
+- private_reserved
+
+Only public and unlisted should be available in the initial user interface.
+
+## replies
+
+- id
+- letter_id
+- author_id
+- parent_reply_id
+- body
+- status
+- created_at
+- updated_at
+- deleted_at
+
+Enforce the one-level nesting rule.
+
+## reactions
+
+- id
+- letter_id
+- user_id
+- reaction_type
+- created_at
+
+Add a unique constraint on the letter and user combination if the chosen interaction model permits only one active reaction per user. If multiple reaction types are allowed, use a unique constraint on letter, user and reaction type instead.
+
+## saved_letters
+
+- id
+- user_id
+- letter_id
+- created_at
+
+Add an appropriate uniqueness constraint.
+
+## notifications
+
+- id
+- recipient_id
+- actor_id
+- notification_type
+- related_letter_id
+- related_reply_id
+- is_read
+- created_at
+
+## reports
+
+- id
+- reporter_id
+- target_type
+- target_id
+- reason
+- description
+- status
+- created_at
+- reviewed_at
+- reviewed_by
+
+## blocks
+
+- id
+- blocker_id
+- blocked_id
+- created_at
+
+Prevent users from blocking themselves.
+
+## moderation_actions
+
+- id
+- moderator_id
+- target_type
+- target_id
+- action_type
+- reason
+- internal_notes
+- created_at
+
+## admin_users
+
+- user_id
+- role
+- created_at
+
+Only authorised administrators may access this table.
+
+## user_notification_preferences
+
+- user_id
+- email_notifications_enabled
+- reply_notifications_enabled
+- conversation_notifications_enabled
+- updated_at
+
+## email_delivery_logs
+
+Store minimal delivery metadata needed to monitor notification delivery. Do not store unnecessary message content.
+
+## platform_settings
+
+Use for editable platform-level settings where appropriate.
+
+Add appropriate indexes for:
+- Public letter discovery.
+- Letter categories.
+- Author-owned letters.
+- Reply retrieval.
+- Notifications.
+- Reports.
+- Search.
+
+Use PostgreSQL full-text search for letter discovery.
+
+Use appropriate constraints and safe deletion strategies.
+
+Do not create a schema where users can modify their own admin role.
+
+---
+
+# 15. DATABASE ACCESS POLICIES
+
+Create and verify Row Level Security policies.
+
+Required access behaviour:
+
+- Public visitors can read eligible public letters.
+- Unlisted letters are not discoverable through public feeds or search.
+- Unlisted letter content can be retrieved through a valid direct-link flow.
+- Owners can read and modify their own letters.
+- Owners cannot modify other people's letters.
+- Users can create and manage their own replies.
+- Users cannot modify other people's replies.
+- Users can manage their own saved letters.
+- Users can read their own notifications.
+- Users cannot read other users' reports or moderation notes.
+- Administrators have restricted, server-verified moderation access.
+- No user can assign themselves an administrator role.
+
+Do not rely on hiding buttons in the frontend as authorization.
+
+Test RLS policies with different user roles.
+
+Pay particular attention to anonymous Supabase users, which use the authenticated database role but have an anonymous identity claim.
+
+---
+
+# 16. SEARCH
+
+Implement search over eligible public letters.
+
+Support:
+- Search terms.
+- Categories.
+- Latest ordering.
+- Relevant matching results where practical.
+
+Never expose:
+- Private letters.
+- Unlisted letters through general search.
+- Removed or restricted content.
+- Moderation notes.
+- Personal account information.
+
+Include a clear no-results state.
+
+Use safe query construction.
+
+---
+
+# 17. ANALYTICS
+
+Implement minimal product analytics without creating a surveillance-oriented platform.
+
+Track aggregate events such as:
+- Letter submitted.
+- Reply submitted.
+- Letter shared.
+- Letter opened.
+- Reaction submitted.
+- First reply received.
+- Return participation.
+
+Do not publish user-level analytics.
+
+Do not expose sensitive content in analytics event payloads.
+
+Avoid unnecessary third-party trackers.
+
+Build an internal aggregate metrics section for authorised administrators if practical.
+
+---
+
+# 18. DOMAIN AND DEPLOYMENT
+
+Prepare the project for Google Cloud Run deployment through AI Studio.
+
+Do not require a domain before development.
+
+The application should work on its provided deployment URL.
+
+Make domain configuration possible later.
+
+Prepare:
+- Production environment configuration.
+- Health-check endpoint.
+- Server-side error handling.
+- Appropriate build scripts.
+- Database migration instructions.
+- Deployment instructions.
+- GitHub compatibility.
+
+Do not hardcode development URLs.
+
+Do not use localhost URLs in production configuration.
+
+---
+
+# 19. USER EXPERIENCE DETAILS
+
+Every important action must have:
+- Loading feedback.
+- Success feedback.
+- Error feedback.
+- Empty states where applicable.
+- Disabled states when an action is unavailable.
+
+Use accessible labels.
+
+Support keyboard navigation.
+
+Provide clear form validation.
+
+Avoid browser alert() for ordinary interactions. Use consistent application notifications or inline messages.
+
+Do not display fake statistics.
+
+Do not fabricate letters, replies, testimonials or community activity.
+
+If a demonstration mode is necessary, make it explicitly labelled and keep it separate from production data.
+
+---
+
+# 20. TESTING REQUIREMENTS
+
+Before declaring the application complete:
+
+1. Install dependencies.
+2. Run the production build.
+3. Run TypeScript checks.
+4. Run linting where configured.
+5. Run available automated tests.
+6. Fix errors and warnings that materially affect the application.
+7. Test authentication flows.
+8. Test database reads and writes.
+9. Test RLS and access restrictions.
+10. Test letter submission.
+11. Test replying.
+12. Test reactions.
+13. Test sharing-card export.
+14. Test responsive layouts.
+15. Test reporting and moderation.
+16. Test empty, loading and error states.
+
+Do not claim a test passed unless it was actually executed.
+
+If Supabase or another service has not been configured, distinguish code-level tests from live integration tests.
+
+---
+
+# 21. COMPLETION REQUIREMENTS
+
+The final application must contain:
+
+- A polished homepage.
+- Working public letter feed.
+- Letter detail pages.
+- Working search and category filtering.
+- Surprise Me discovery.
+- Letter submission.
+- Anonymous authentication.
+- Optional account recovery linking.
+- Public replies and nested responses.
+- Reactions.
+- Personal dashboard.
+- Saved letters.
+- In-app notifications.
+- Share Studio with downloadable image cards.
+- Social sharing workflows.
+- Open Letterbox.
+- Letter of the Day administration.
+- Reporting and blocking.
+- Functional moderation dashboard.
+- Privacy policy and community guidelines.
+- Responsive mobile and desktop interfaces.
+- Database schema and migrations.
+- Row Level Security policies.
+- Environment variable documentation.
+- Deployment instructions.
+
+The application must be visually coherent and use real persisted data.
+
+Do not substitute placeholders for core functionality.
+
+---
+
+# 22. FINAL HANDOVER REPORT
+
+When finished, provide a concise but detailed report containing:
+
+1. Implemented features.
+2. Project architecture.
+3. Database tables and migrations created.
+4. Authentication approach.
+5. Security and RLS measures implemented.
+6. Tests actually executed and their results.
+7. Features requiring external configuration.
+8. Missing API keys or credentials.
+9. Known limitations and unresolved issues.
+10. Exact steps to connect Supabase.
+11. Exact steps to configure email and CAPTCHA.
+12. Exact steps to deploy the application.
+
+Clearly classify every feature as:
+- Implemented and tested.
+- Implemented but integration testing pending.
+- Partially implemented.
+- Not implemented.
+
+Never misrepresent incomplete work as complete.
+
+Begin by inspecting the available project environment, then implement the full application. Do not stop at planning or ask me to approve each individual component. Make sensible product and technical decisions consistent with this specification.
+
+The objective is a genuinely functional first release of Dear Stranger, not a visually impressive mockup.

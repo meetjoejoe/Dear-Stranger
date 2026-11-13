@@ -1,0 +1,54 @@
+@import "tailwindcss";
+@custom-variant dark (&:where(.dark, .dark *));
+
+@layer base {
+  :root {
+    --ds-bg: #F8F7F3;
+    --ds-surface: #FFFFFF;
+    --ds-muted-surface: #F1EFE9;
+    --ds-text: #252525;
+    --ds-secondary: #77736D;
+    --ds-border: #E8E5DF;
+    --ds-accent: #80545A;
+    --ds-accent-hover: #6C454A;
+  }
+
+  .dark {
+    --ds-bg: #181715;
+    --ds-surface: #201E1B;
+    --ds-muted-surface: #282521;
+    --ds-text: #EAE6DF;
+    --ds-secondary: #A19B92;
+    --ds-border: #332F2A;
+    --ds-accent: #B8838A;
+    --ds-accent-hover: #C8969C;
+  }
+
+  html {
+    font-family: "Plus Jakarta Sans", -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+    background-color: var(--ds-bg);
+    color: var(--ds-text);
+    scroll-behavior: smooth;
+  }
+
+  .font-editorial {
+    font-family: "Cormorant Garamond", Georgia, "Times New Roman", serif;
+  }
+
+  .font-sans-ui {
+    font-family: "Plus Jakarta Sans", -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+  }
+
+  *:focus-visible {
+    outline: 2px solid var(--ds-accent);
+    outline-offset: 2px;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after {
+    animation-duration: 0.01ms !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
+}
