@@ -29,6 +29,17 @@ AS $$
   );
 $$;
 
+-- Helper function: reads own account_status without triggering RLS recursion on profiles
+CREATE OR REPLACE FUNCTION public.get_my_account_status()
+RETURNS TEXT
+LANGUAGE SQL
+STABLE
+SECURITY DEFINER
+SET search_path = public
+AS $$
+  SELECT account_status FROM public.profiles WHERE id = auth.uid();
+$$;
+
 -- Direct-link unlisted letter lookup (excluded from public feeds, safe via direct UUID)
 CREATE OR REPLACE FUNCTION public.get_letter_by_direct_link(p_letter_id UUID)
 RETURNS TABLE (
@@ -119,7 +130,7 @@ CREATE POLICY profiles_update_own ON public.profiles
   USING (auth.uid() = id)
   WITH CHECK (
     auth.uid() = id
-    AND account_status = (SELECT p.account_status FROM public.profiles p WHERE p.id = auth.uid())
+    AND account_status = public.get_my_account_status()
   );
 
 -- ---------------------------------------------------------------------------
@@ -237,7 +248,12 @@ CREATE POLICY reactions_select_public ON public.reactions
   USING (
     EXISTS (
       SELECT 1 FROM public.letters l
-      WHERE l.id = letter_id AND l.deleted_at IS NULL AND l.status IN ('published', 'locked')
+      WHERE l.id = letter_id
+        AND l.deleted_at IS NULL
+        AND (
+          (l.visibility = 'public' AND l.status IN ('published', 'locked'))
+          OR l.author_id = auth.uid()
+        )
     )
     OR auth.uid() = user_id
   );

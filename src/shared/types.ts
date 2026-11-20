@@ -182,12 +182,14 @@ export interface ModerationActionDTO {
 
 export interface PlatformConfigDTO {
   supabaseConfigured: boolean;
+  supabaseSchemaReady?: boolean;
   supabaseUrl: string | null;
   supabasePublishableKey: string | null;
   turnstileSiteKey: string | null;
   emailConfigured: boolean;
   sandboxActive: boolean;
   sandboxHasSamples: boolean;
+  staticFallback?: boolean;
   platformAnnouncement: {
     active: boolean;
     message: string;

@@ -55,8 +55,8 @@ export function LetterDetailPage() {
           `/api/letters/${id}?track=${trackOpen ? 'true' : 'false'}`,
           { token }
         );
-        setLetter(res.letter);
-        setReplies(res.replies);
+        setLetter(res?.letter ?? null);
+        setReplies(Array.isArray(res?.replies) ? res.replies : []);
       } catch (err) {
         setError(err instanceof Error ? err.message : 'Unable to load this letter.');
       } finally {
@@ -65,6 +65,17 @@ export function LetterDetailPage() {
     },
     [id, token]
   );
+
+  useEffect(() => {
+    setShareOpen(false);
+    setReportTarget(null);
+    setReplyText('');
+    setReplyTargetParentId(null);
+    setNestedReplyText('');
+    setEditingReplyId(null);
+    setEditingReplyText('');
+    setShowSafetySupport(false);
+  }, [id]);
 
   useEffect(() => {
     void loadDetail(true);

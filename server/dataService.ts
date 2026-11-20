@@ -20,6 +20,7 @@ import type {
 import { REACTION_TYPES } from '../src/shared/types.ts';
 import {
   generateAnonymousNickname,
+  isValidUuid,
   letterInputSchema,
   nicknameSchema,
   replyInputSchema,
@@ -41,6 +42,44 @@ export class AppError extends Error {
     super(message);
     this.statusCode = statusCode;
   }
+}
+
+export function isMissingTableError(error: { code?: string; message?: string } | null | undefined): boolean {
+  if (!error) return false;
+  if (error.code === 'PGRST205' || error.code === '42P01') return true;
+  const msg = (error.message || '').toLowerCase();
+  return msg.includes('schema cache') || msg.includes('does not exist');
+}
+
+function throwMappedDbError(
+  error: { code?: string; message?: string } | null | undefined,
+  statusCode: number,
+  fallbackMessage: string
+): never {
+  if (isMissingTableError(error)) {
+    throw new AppError(
+      503,
+      'Supabase database tables are not initialized yet. Apply supabase/migrations/001_initial_schema.sql and 002_rls_and_functions.sql (see /setup).'
+    );
+  }
+  throw new AppError(statusCode, fallbackMessage);
+}
+
+let cachedSchemaCheck: { value: boolean; checkedAt: number } | null = null;
+
+export async function checkSupabaseSchemaReady(): Promise<boolean> {
+  if (!isSupabaseConfigured()) return false;
+  const now = Date.now();
+  const ttlMs = cachedSchemaCheck?.value ? 15_000 : 3_000;
+  if (cachedSchemaCheck && now - cachedSchemaCheck.checkedAt < ttlMs) {
+    return cachedSchemaCheck.value;
+  }
+  const admin = getSupabaseAdminClient();
+  if (!admin) return false;
+  const { error } = await admin.from('categories').select('id').limit(1);
+  const ready = !error;
+  cachedSchemaCheck = { value: ready, checkedAt: now };
+  return ready;
 }
 
 export interface AuthContext {
@@ -176,7 +215,11 @@ export async function resolveAuthContext(bearerToken: string | null): Promise<Au
     .maybeSingle();
 
   if (!adminRow) {
-    const emailMatch = user.email && cfg.adminBootstrapEmails.includes(user.email.toLowerCase());
+    const emailMatch = Boolean(
+      user.email &&
+        user.email_confirmed_at &&
+        cfg.adminBootstrapEmails.includes(user.email.toLowerCase())
+    );
     const idMatch = cfg.adminBootstrapUserIds.includes(user.id);
     if (emailMatch || idMatch) {
       const { data: bootstrapped } = await admin
@@ -279,11 +322,15 @@ export async function getPlatformAnnouncement(): Promise<{ active: boolean; mess
   }
   const admin = getSupabaseAdminClient();
   if (!admin) return { active: false, message: '' };
-  const { data } = await admin
+  const { data, error } = await admin
     .from('platform_settings')
     .select('value')
     .eq('key', 'platform_announcement')
     .maybeSingle();
+  if (error) {
+    if (isMissingTableError(error)) return { active: false, message: '' };
+    throwMappedDbError(error, 500, 'Could not load platform announcement.');
+  }
   const val = (data?.value as { active?: boolean; message?: string } | undefined) || {};
   return {
     active: Boolean(val.active && val.message),
@@ -306,7 +353,7 @@ export async function listCategories(includeInactive = false): Promise<CategoryD
     query = query.eq('is_active', true);
   }
   const { data, error } = await query;
-  if (error) throw new AppError(500, 'Failed to load categories.');
+  if (error) throwMappedDbError(error, 500, 'Failed to load categories.');
   return (data || []) as CategoryDTO[];
 }
 
@@ -605,7 +652,7 @@ export async function listPublicLetters(params: {
     .range(offset, offset + limit - 1);
 
   if (error) {
-    throw new AppError(500, 'Could not search letters.');
+    throwMappedDbError(error, 500, 'Could not search letters.');
   }
 
   const letters = await enrichSupabaseLetters((data || []) as Array<Record<string, unknown>>, params.viewerId);
@@ -651,7 +698,10 @@ export async function getSurpriseLetter(
     query = query.not('author_id', 'in', `(${Array.from(blockedIds).join(',')})`);
   }
 
-  const { data: candidates } = await query;
+  const { data: candidates, error } = await query;
+  if (error) {
+    throwMappedDbError(error, 500, 'Could not load letters.');
+  }
   if (!candidates || candidates.length === 0) return null;
   const unvisited = candidates.filter((c) => !excludeSet.has(c.id));
   const pool = unvisited.length > 0 ? unvisited : candidates;
@@ -699,16 +749,20 @@ export async function getLetterOfTheDay(viewerId: string | null): Promise<{
   }
 
   const admin = getSupabaseAdminClient()!;
-  const { data: setting } = await admin
+  const { data: setting, error: settingErr } = await admin
     .from('platform_settings')
     .select('value')
     .eq('key', 'letter_of_the_day')
     .maybeSingle();
+  if (settingErr) {
+    if (isMissingTableError(settingErr)) return { letter: null, editorNote: null };
+    throwMappedDbError(settingErr, 500, 'Could not load Letter of the Day.');
+  }
 
   const val = (setting?.value as { letter_id?: string | null; editor_note?: string | null } | undefined) || {};
   if (!val.letter_id) return { letter: null, editorNote: null };
 
-  const { data: letterRow } = await admin
+  const { data: letterRow, error: letterErr } = await admin
     .from('letters')
     .select('*')
     .eq('id', val.letter_id)
@@ -717,6 +771,10 @@ export async function getLetterOfTheDay(viewerId: string | null): Promise<{
     .is('deleted_at', null)
     .maybeSingle();
 
+  if (letterErr) {
+    if (isMissingTableError(letterErr)) return { letter: null, editorNote: null };
+    throwMappedDbError(letterErr, 500, 'Could not load Letter of the Day.');
+  }
   if (!letterRow) return { letter: null, editorNote: null };
   const enriched = await enrichSupabaseLetters([letterRow as Record<string, unknown>], viewerId);
   return { letter: enriched[0] || null, editorNote: val.editor_note || null };
@@ -794,14 +852,19 @@ export async function getLetterDetail(
     return { letter: dto, replies: topLevel };
   }
 
+  if (!isValidUuid(letterId)) {
+    throw new AppError(404, 'Letter not found.');
+  }
+
   const admin = getSupabaseAdminClient()!;
-  const { data: row } = await admin
+  const { data: row, error } = await admin
     .from('letters')
     .select('*')
     .eq('id', letterId)
     .is('deleted_at', null)
     .maybeSingle();
 
+  if (error) throwMappedDbError(error, 500, 'Could not load letter.');
   if (!row) throw new AppError(404, 'Letter not found.');
   const isOwner = Boolean(viewerId && row.author_id === viewerId);
   const isAdmin = Boolean(auth?.profile.isAdmin);
@@ -1020,13 +1083,18 @@ export async function updateOwnLetter(
     return formatSandboxLetterDTO(letter, activeAuth.userId);
   }
 
+  if (!isValidUuid(letterId)) {
+    throw new AppError(404, 'Letter not found.');
+  }
+
   const admin = getSupabaseAdminClient()!;
-  const { data: existing } = await admin
+  const { data: existing, error: fetchErr } = await admin
     .from('letters')
     .select('*')
     .eq('id', letterId)
     .is('deleted_at', null)
     .maybeSingle();
+  if (fetchErr) throwMappedDbError(fetchErr, 500, 'Could not load letter.');
   if (!existing) throw new AppError(404, 'Letter not found.');
   if (existing.author_id !== activeAuth.userId) throw new AppError(403, 'You can only edit your own letters.');
   if (existing.status === 'removed' || existing.status === 'locked') {
@@ -1068,6 +1136,10 @@ export async function deleteOwnLetter(auth: AuthContext | null, letterId: string
     if (letter.authorId !== activeAuth.userId) throw new AppError(403, 'You can only delete your own letters.');
     letter.deletedAt = now;
     return;
+  }
+
+  if (!isValidUuid(letterId)) {
+    throw new AppError(404, 'Letter not found.');
   }
 
   const admin = getSupabaseAdminClient()!;
@@ -1183,6 +1255,10 @@ export async function createReply(
       },
       imminentHarmDetected: safety.imminentHarmDetected,
     };
+  }
+
+  if (!isValidUuid(letterId)) {
+    throw new AppError(404, 'Letter not found.');
   }
 
   const admin = getSupabaseAdminClient()!;
@@ -1352,6 +1428,7 @@ export async function updateOwnReply(auth: AuthContext | null, replyId: string, 
     };
   }
 
+  if (!isValidUuid(replyId)) throw new AppError(404, 'Reply not found.');
   const admin = getSupabaseAdminClient()!;
   const { data: existing } = await admin
     .from('replies')
@@ -1398,6 +1475,7 @@ export async function deleteOwnReply(auth: AuthContext | null, replyId: string):
     return;
   }
 
+  if (!isValidUuid(replyId)) throw new AppError(404, 'Reply not found.');
   const admin = getSupabaseAdminClient()!;
   const { data: existing } = await admin
     .from('replies')
@@ -1445,6 +1523,7 @@ export async function setLetterReaction(
     return formatSandboxLetterDTO(letter, activeAuth.userId).reactions;
   }
 
+  if (!isValidUuid(letterId)) throw new AppError(404, 'Letter not found.');
   const admin = getSupabaseAdminClient()!;
   if (reactionType === null) {
     await admin.from('reactions').delete().eq('letter_id', letterId).eq('user_id', activeAuth.userId);
@@ -1503,6 +1582,7 @@ export async function toggleSavedLetter(
     return { isSaved: save };
   }
 
+  if (!isValidUuid(letterId)) throw new AppError(404, 'Letter not found.');
   const admin = getSupabaseAdminClient()!;
   if (save) {
     await admin
@@ -1591,6 +1671,21 @@ export async function getDashboardData(auth: AuthContext): Promise<{
         createdAt: b.createdAt,
       }));
 
+    const myAppeals: ReportDTO[] = sandboxStore.reports
+      .filter((r) => r.reporterId === auth.userId && (r.status === 'appealed' || Boolean(r.appealNote)))
+      .map((r) => ({
+        id: r.id,
+        targetType: r.targetType,
+        targetId: r.targetId,
+        reason: r.reason,
+        description: r.description,
+        status: r.status,
+        appealNote: r.appealNote,
+        appealedAt: r.appealedAt,
+        createdAt: r.createdAt,
+        reviewedAt: r.reviewedAt,
+      }));
+
     return {
       myLetters,
       myReplies,
@@ -1599,7 +1694,7 @@ export async function getDashboardData(auth: AuthContext): Promise<{
       notifications,
       preferences,
       blockedAccounts,
-      myAppeals: [],
+      myAppeals,
     };
   }
 
@@ -1700,6 +1795,27 @@ export async function getDashboardData(auth: AuthContext): Promise<{
     createdAt: b.created_at,
   }));
 
+  const { data: appealsRes } = await admin
+    .from('reports')
+    .select('*')
+    .eq('reporter_id', auth.userId)
+    .or('status.eq.appealed,appeal_note.not.is.null')
+    .order('created_at', { ascending: false })
+    .limit(20);
+
+  const myAppeals: ReportDTO[] = (appealsRes || []).map((r) => ({
+    id: r.id,
+    targetType: r.target_type,
+    targetId: r.target_id,
+    reason: r.reason as ReportReason,
+    description: r.description,
+    status: r.status,
+    appealNote: r.appeal_note,
+    appealedAt: r.appealed_at,
+    createdAt: r.created_at,
+    reviewedAt: r.reviewed_at,
+  }));
+
   return {
     myLetters,
     myReplies,
@@ -1708,7 +1824,7 @@ export async function getDashboardData(auth: AuthContext): Promise<{
     notifications,
     preferences,
     blockedAccounts,
-    myAppeals: [],
+    myAppeals,
   };
 }
 
@@ -1866,6 +1982,10 @@ export async function deleteAccountAndData(auth: AuthContext): Promise<void> {
     }
     sandboxStore.savedLetters = sandboxStore.savedLetters.filter((s) => s.userId !== auth.userId);
     sandboxStore.notifications = sandboxStore.notifications.filter((n) => n.recipientId !== auth.userId);
+    sandboxStore.reactions = sandboxStore.reactions.filter((r) => r.userId !== auth.userId);
+    sandboxStore.blocks = sandboxStore.blocks.filter(
+      (b) => b.blockerId !== auth.userId && b.blockedId !== auth.userId
+    );
     return;
   }
 
@@ -1956,6 +2076,10 @@ export async function blockAuthorByLetterOrReply(
     return;
   }
 
+  if ((input.letterId && !isValidUuid(input.letterId)) || (input.replyId && !isValidUuid(input.replyId))) {
+    throw new AppError(404, 'Author not found.');
+  }
+
   const admin = getSupabaseAdminClient()!;
   let targetAuthorId: string | null = null;
   if (input.letterId) {
@@ -1980,6 +2104,7 @@ export async function removeBlock(auth: AuthContext, blockId: string): Promise<v
     );
     return;
   }
+  if (!isValidUuid(blockId)) return;
   const admin = getSupabaseAdminClient()!;
   await admin.from('blocks').delete().eq('id', blockId).eq('blocker_id', auth.userId);
 }
@@ -2063,6 +2188,7 @@ export async function getModerationConsoleData(auth: AuthContext | null): Promis
   auditTrail: ModerationActionDTO[];
   metrics: AggregateMetricsDTO;
   letterOfTheDayId: string | null;
+  letterOfTheDayNote?: string | null;
   announcement: { active: boolean; message: string };
 }> {
   requireAdmin(auth);
@@ -2126,6 +2252,7 @@ export async function getModerationConsoleData(auth: AuthContext | null): Promis
       auditTrail,
       metrics: sandboxStore.metrics,
       letterOfTheDayId: sandboxStore.letterOfTheDayId,
+      letterOfTheDayNote: null,
       announcement: sandboxStore.platformAnnouncement,
     };
   }
@@ -2177,19 +2304,83 @@ export async function getModerationConsoleData(auth: AuthContext | null): Promis
     if (ev.event_type === 'return_participation') metrics.returnParticipation += 1;
   }
 
+  const rawReports = reportsRes.data || [];
+  const letterReportIds = Array.from(
+    new Set(rawReports.filter((r) => r.target_type === 'letter').map((r) => r.target_id))
+  );
+  const replyReportIds = Array.from(
+    new Set(rawReports.filter((r) => r.target_type === 'reply').map((r) => r.target_id))
+  );
+  const accountReportIds = Array.from(
+    new Set(rawReports.filter((r) => r.target_type === 'account').map((r) => r.target_id))
+  );
+
+  const [repLettersRes, repRepliesRes, repAccRes] = await Promise.all([
+    letterReportIds.length > 0
+      ? admin.from('letters').select('id, title, body, status, author_id').in('id', letterReportIds)
+      : Promise.resolve({ data: [] as Array<{ id: string; title: string | null; body: string; status: string; author_id: string }> }),
+    replyReportIds.length > 0
+      ? admin.from('replies').select('id, body, status, author_id').in('id', replyReportIds)
+      : Promise.resolve({ data: [] as Array<{ id: string; body: string; status: string; author_id: string }> }),
+    accountReportIds.length > 0
+      ? admin.from('profiles').select('id, display_name, account_status').in('id', accountReportIds)
+      : Promise.resolve({ data: [] as Array<{ id: string; display_name: string; account_status: string }> }),
+  ]);
+
+  const targetAuthorIds = Array.from(
+    new Set([
+      ...(repLettersRes.data || []).map((l) => l.author_id),
+      ...(repRepliesRes.data || []).map((r) => r.author_id),
+    ])
+  );
+  const { data: targetAuthorProfiles } =
+    targetAuthorIds.length > 0
+      ? await admin.from('profiles').select('id, display_name').in('id', targetAuthorIds)
+      : { data: [] as Array<{ id: string; display_name: string }> };
+  const targetAuthorMap = new Map((targetAuthorProfiles || []).map((p) => [p.id, p.display_name]));
+  const repLetterMap = new Map((repLettersRes.data || []).map((l) => [l.id, l]));
+  const repReplyMap = new Map((repRepliesRes.data || []).map((r) => [r.id, r]));
+  const repAccMap = new Map((repAccRes.data || []).map((p) => [p.id, p]));
+
+  const lotdVal = (lotdRes.data?.value as { letter_id?: string | null; editor_note?: string | null } | undefined) || {};
+
   return {
-    reports: (reportsRes.data || []).map((r) => ({
-      id: r.id,
-      targetType: r.target_type,
-      targetId: r.target_id,
-      reason: r.reason as ReportReason,
-      description: r.description,
-      status: r.status,
-      appealNote: r.appeal_note,
-      appealedAt: r.appealed_at,
-      createdAt: r.created_at,
-      reviewedAt: r.reviewed_at,
-    })),
+    reports: rawReports.map((r) => {
+      let targetPreview = '';
+      let targetAuthorDisplayName = '';
+      let targetStatus = '';
+      if (r.target_type === 'letter') {
+        const l = repLetterMap.get(r.target_id);
+        targetPreview = l ? `${l.title ? l.title + ': ' : ''}${l.body.slice(0, 140)}` : 'Deleted letter';
+        targetAuthorDisplayName = l ? targetAuthorMap.get(l.author_id) || 'Stranger' : '';
+        targetStatus = l?.status || 'deleted';
+      } else if (r.target_type === 'reply') {
+        const rep = repReplyMap.get(r.target_id);
+        targetPreview = rep ? rep.body.slice(0, 140) : 'Deleted reply';
+        targetAuthorDisplayName = rep ? targetAuthorMap.get(rep.author_id) || 'Stranger' : '';
+        targetStatus = rep?.status || 'deleted';
+      } else {
+        const p = repAccMap.get(r.target_id);
+        targetPreview = p ? `Account: ${p.display_name}` : 'Account';
+        targetAuthorDisplayName = p?.display_name || '';
+        targetStatus = p?.account_status || 'unknown';
+      }
+      return {
+        id: r.id,
+        targetType: r.target_type,
+        targetId: r.target_id,
+        reason: r.reason as ReportReason,
+        description: r.description,
+        status: r.status,
+        appealNote: r.appeal_note,
+        appealedAt: r.appealed_at,
+        createdAt: r.created_at,
+        reviewedAt: r.reviewed_at,
+        targetPreview,
+        targetAuthorDisplayName,
+        targetStatus,
+      };
+    }),
     flaggedLetters,
     auditTrail: (actionsRes.data || []).map((a) => ({
       id: a.id,
@@ -2202,7 +2393,8 @@ export async function getModerationConsoleData(auth: AuthContext | null): Promis
       createdAt: a.created_at,
     })),
     metrics,
-    letterOfTheDayId: (lotdRes.data?.value as { letter_id?: string | null } | undefined)?.letter_id ?? null,
+    letterOfTheDayId: lotdVal.letter_id ?? null,
+    letterOfTheDayNote: lotdVal.editor_note ?? null,
     announcement: {
       active: Boolean((annRes.data?.value as { active?: boolean } | undefined)?.active),
       message: (annRes.data?.value as { message?: string } | undefined)?.message || '',
@@ -2457,6 +2649,7 @@ export async function recordShareEvent(letterId: string): Promise<void> {
     sandboxStore.metrics.letterShared += 1;
     return;
   }
+  if (!isValidUuid(letterId)) return;
   const admin = getSupabaseAdminClient();
   if (admin) {
     await admin.from('analytics_events').insert({ event_type: 'letter_shared', letter_id: letterId });

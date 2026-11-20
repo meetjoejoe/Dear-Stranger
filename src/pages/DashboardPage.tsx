@@ -5,6 +5,7 @@ import type {
   NotificationDTO,
   NotificationPreferencesDTO,
   PublicLetterDTO,
+  ReportDTO,
 } from '../shared/types.ts';
 import { apiFetch } from '../lib/api.ts';
 import { useAuth } from '../context/AuthContext.tsx';
@@ -35,6 +36,7 @@ interface DashboardPayload {
   notifications: NotificationDTO[];
   preferences: NotificationPreferencesDTO;
   blockedAccounts: BlockedAccountDTO[];
+  myAppeals?: ReportDTO[];
 }
 
 export function DashboardPage() {
@@ -250,6 +252,7 @@ export function DashboardPage() {
       });
       setAppealNote('');
       showToast('Your moderation appeal has been submitted.', 'success');
+      await loadDashboard();
     } catch (err) {
       showToast(err instanceof Error ? err.message : 'Could not submit appeal.', 'error');
     } finally {
@@ -748,6 +751,27 @@ export function DashboardPage() {
                 >
                   Submit Appeal
                 </button>
+                {data?.myAppeals && data.myAppeals.length > 0 && (
+                  <div className="pt-4 border-t border-[#E8E5DF] dark:border-[#332F2A] space-y-2">
+                    <p className="text-xs font-medium text-[#252525] dark:text-[#EAE6DF]">
+                      Your Submitted Appeals
+                    </p>
+                    <ul className="space-y-2">
+                      {data.myAppeals.map((appeal) => (
+                        <li
+                          key={appeal.id}
+                          className="rounded-md border border-[#E8E5DF] dark:border-[#332F2A] bg-[#F8F7F3] dark:bg-[#181715] p-3 text-xs space-y-1"
+                        >
+                          <div className="flex items-center justify-between gap-2 text-[#77736D] dark:text-[#A19B92]">
+                            <span>Status: <strong className="text-[#252525] dark:text-[#EAE6DF]">{appeal.status}</strong></span>
+                            <span>{formatEditorialDate(appeal.appealedAt || appeal.createdAt)}</span>
+                          </div>
+                          {appeal.appealNote && <p className="text-sm">{appeal.appealNote}</p>}
+                        </li>
+                      ))}
+                    </ul>
+                  </div>
+                )}
               </form>
 
               {config && !config.supabaseConfigured && (

@@ -19,6 +19,7 @@ interface ModerationConsolePayload {
   auditTrail: ModerationActionDTO[];
   metrics: AggregateMetricsDTO;
   letterOfTheDayId: string | null;
+  letterOfTheDayNote?: string | null;
   announcement: { active: boolean; message: string };
 }
 
@@ -57,11 +58,12 @@ export function ModerationPage() {
         apiFetch<{ letters: PublicLetterDTO[] }>('/api/letters?limit=25', { token }),
       ]);
       setData(modRes);
-      setAllCategories(catRes.categories);
-      setPublicLetters(feedRes.letters);
-      setAnnouncementActive(modRes.announcement.active);
-      setAnnouncementMessage(modRes.announcement.message);
-      setSelectedLotdId(modRes.letterOfTheDayId || '');
+      setAllCategories(Array.isArray(catRes?.categories) ? catRes.categories : []);
+      setPublicLetters(Array.isArray(feedRes?.letters) ? feedRes.letters : []);
+      setAnnouncementActive(Boolean(modRes?.announcement?.active));
+      setAnnouncementMessage(modRes?.announcement?.message || '');
+      setSelectedLotdId(modRes?.letterOfTheDayId || '');
+      setLotdNote(modRes?.letterOfTheDayNote || '');
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Unable to load moderation console.');
     } finally {

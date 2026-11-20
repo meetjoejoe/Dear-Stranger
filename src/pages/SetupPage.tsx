@@ -48,21 +48,29 @@ export function SetupPage() {
       <div className="rounded-lg border border-[#E8E5DF] dark:border-[#332F2A] bg-[#FFFFFF] dark:bg-[#201E1B] p-6 space-y-4">
         <h2 className="font-editorial text-2xl font-semibold">Live Configuration Check</h2>
         <dl className="divide-y divide-[#E8E5DF] dark:divide-[#332F2A] text-sm">
-          <div className="py-2.5 flex justify-between gap-4">
-            <dt className="text-[#77736D] dark:text-[#A19B92]">Supabase PostgreSQL &amp; Auth</dt>
-            <dd className="font-medium">
+          <div className="py-2.5 flex flex-col sm:flex-row sm:justify-between gap-1 sm:gap-4">
+            <dt className="text-[#77736D] dark:text-[#A19B92] shrink-0">Supabase PostgreSQL &amp; Auth</dt>
+            <dd className="font-medium sm:text-right break-words min-w-0">
               {config?.supabaseConfigured ? 'Connected' : 'Not configured (Sandbox Preview active)'}
             </dd>
           </div>
-          <div className="py-2.5 flex justify-between gap-4">
-            <dt className="text-[#77736D] dark:text-[#A19B92]">Resend Email Notifications</dt>
-            <dd className="font-medium">
+          {config?.supabaseConfigured && (
+            <div className="py-2.5 flex flex-col sm:flex-row sm:justify-between gap-1 sm:gap-4">
+              <dt className="text-[#77736D] dark:text-[#A19B92] shrink-0">Database Schema (001 &amp; 002)</dt>
+              <dd className="font-medium sm:text-right break-words min-w-0">
+                {config.supabaseSchemaReady ? 'Initialized' : 'Migrations pending'}
+              </dd>
+            </div>
+          )}
+          <div className="py-2.5 flex flex-col sm:flex-row sm:justify-between gap-1 sm:gap-4">
+            <dt className="text-[#77736D] dark:text-[#A19B92] shrink-0">Resend Email Notifications</dt>
+            <dd className="font-medium sm:text-right break-words min-w-0">
               {config?.emailConfigured ? 'Configured' : 'Not configured (in-app notifications active)'}
             </dd>
           </div>
-          <div className="py-2.5 flex justify-between gap-4">
-            <dt className="text-[#77736D] dark:text-[#A19B92]">Cloudflare Turnstile CAPTCHA</dt>
-            <dd className="font-medium">
+          <div className="py-2.5 flex flex-col sm:flex-row sm:justify-between gap-1 sm:gap-4">
+            <dt className="text-[#77736D] dark:text-[#A19B92] shrink-0">Cloudflare Turnstile CAPTCHA</dt>
+            <dd className="font-medium sm:text-right break-words min-w-0">
               {config?.turnstileSiteKey ? 'Enabled' : 'Optional (not configured)'}
             </dd>
           </div>
@@ -106,14 +114,14 @@ export function SetupPage() {
       )}
 
       {/* Connection Steps */}
-      <div className="rounded-lg border border-[#E8E5DF] dark:border-[#332F2A] bg-[#FFFFFF] dark:bg-[#201E1B] p-6 space-y-4 text-sm leading-relaxed">
+      <div className="rounded-lg border border-[#E8E5DF] dark:border-[#332F2A] bg-[#FFFFFF] dark:bg-[#201E1B] p-6 space-y-4 text-sm leading-relaxed overflow-hidden">
         <h2 className="font-editorial text-2xl font-semibold">Connecting Live Supabase</h2>
-        <ol className="list-decimal pl-5 space-y-2 text-[#77736D] dark:text-[#A19B92]">
+        <ol className="list-decimal pl-5 space-y-2 text-[#77736D] dark:text-[#A19B92] break-words">
           <li>Create a Supabase project and enable <strong>Anonymous Sign-Ins</strong> under Authentication &rarr; Providers.</li>
-          <li>Apply both SQL migrations in <code>supabase/migrations/001_initial_schema.sql</code> and <code>002_rls_and_functions.sql</code>.</li>
-          <li>Set <code>SUPABASE_URL</code>, <code>SUPABASE_PUBLISHABLE_KEY</code>, and <code>SUPABASE_SECRET_KEY</code> in your server environment / Cloud Run secrets.</li>
-          <li>Optionally set <code>ADMIN_BOOTSTRAP_EMAILS</code> or insert your user UUID into <code>public.admin_users</code> to grant Moderation Console access.</li>
-          <li>Optionally set <code>RESEND_API_KEY</code> and <code>TURNSTILE_SITE_KEY</code> / <code>TURNSTILE_SECRET_KEY</code> for email notifications and CAPTCHA protection.</li>
+          <li>Apply both SQL migrations in <code className="break-all">supabase/migrations/001_initial_schema.sql</code> and <code className="break-all">002_rls_and_functions.sql</code>.</li>
+          <li>Set <code className="break-all">SUPABASE_URL</code>, <code className="break-all">SUPABASE_PUBLISHABLE_KEY</code>, and <code className="break-all">SUPABASE_SECRET_KEY</code> in your server environment (Vercel / Cloud Run).</li>
+          <li>Optionally set <code className="break-all">ADMIN_BOOTSTRAP_EMAILS</code> or insert your user UUID into <code className="break-all">public.admin_users</code> to grant Moderation Console access.</li>
+          <li>Optionally set <code className="break-all">RESEND_API_KEY</code> and <code className="break-all">TURNSTILE_SITE_KEY</code> / <code className="break-all">TURNSTILE_SECRET_KEY</code> for email notifications and CAPTCHA protection.</li>
         </ol>
       </div>
     </div>

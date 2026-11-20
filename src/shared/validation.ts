@@ -68,9 +68,15 @@ export const reactionInputSchema = z.object({
   reactionType: z.enum(REACTION_TYPES).nullable(),
 });
 
+const UUID_REGEX = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+
+export function isValidUuid(value: string | null | undefined): boolean {
+  return typeof value === 'string' && UUID_REGEX.test(value);
+}
+
 export const reportInputSchema = z.object({
   targetType: z.enum(['letter', 'reply', 'account']),
-  targetId: z.string().min(1),
+  targetId: z.string().uuid('Invalid report target identifier.'),
   reason: z.enum(REPORT_REASONS),
   description: z
     .string()

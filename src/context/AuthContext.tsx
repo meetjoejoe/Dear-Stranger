@@ -1,6 +1,7 @@
 import React, { createContext, useCallback, useContext, useEffect, useState } from 'react';
 import type { CategoryDTO, PlatformConfigDTO, ProfileDTO } from '../shared/types.ts';
 import { apiFetch } from '../lib/api.ts';
+import { DEFAULT_CATEGORIES } from '../lib/clientSandboxFallback.ts';
 import { getBrowserSupabaseClient } from '../lib/supabase.ts';
 
 const SANDBOX_TOKEN_KEY = 'ds_sandbox_token';
@@ -35,7 +36,7 @@ const AuthContext = createContext<AuthContextValue | null>(null);
 
 export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [config, setConfig] = useState<PlatformConfigDTO | null>(null);
-  const [categories, setCategories] = useState<CategoryDTO[]>([]);
+  const [categories, setCategories] = useState<CategoryDTO[]>(DEFAULT_CATEGORIES);
   const [token, setToken] = useState<string | null>(null);
   const [profile, setProfile] = useState<ProfileDTO | null>(null);
   const [loading, setLoading] = useState(true);
@@ -61,7 +62,11 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       const dash = await apiFetch<{ notifications: Array<{ isRead: boolean }> }>('/api/dashboard', {
         token: activeToken,
       });
-      setUnreadCount(dash.notifications.filter((n) => !n.isRead).length);
+      setUnreadCount(
+        Array.isArray(dash?.notifications)
+          ? dash.notifications.filter((n) => !n.isRead).length
+          : 0
+      );
     } catch {
       setUnreadCount(0);
     }
@@ -70,7 +75,9 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const refreshCategories = useCallback(async () => {
     try {
       const res = await apiFetch<{ categories: CategoryDTO[] }>('/api/categories');
-      setCategories(res.categories);
+      if (Array.isArray(res?.categories) && res.categories.length > 0) {
+        setCategories(res.categories);
+      }
     } catch {
       // keep existing categories
     }
@@ -119,13 +126,22 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     let mounted = true;
     async function init() {
       try {
-        const [cfg, catRes] = await Promise.all([
-          apiFetch<PlatformConfigDTO>('/api/config'),
-          apiFetch<{ categories: CategoryDTO[] }>('/api/categories'),
-        ]);
+        const cfg = await apiFetch<PlatformConfigDTO>('/api/config');
         if (!mounted) return;
         setConfig(cfg);
-        setCategories(catRes.categories);
+
+        // Fetch categories independently when DB is ready (or sandbox mode) so pending migrations never spam 503s or block auth/config
+        if (!cfg.supabaseConfigured || cfg.supabaseSchemaReady !== false) {
+          apiFetch<{ categories: CategoryDTO[] }>('/api/categories')
+            .then((catRes) => {
+              if (mounted && Array.isArray(catRes?.categories) && catRes.categories.length > 0) {
+                setCategories(catRes.categories);
+              }
+            })
+            .catch(() => {
+              // keep default fallback labels in selector until schema is ready
+            });
+        }
 
         if (cfg.supabaseConfigured && cfg.supabaseUrl && cfg.supabasePublishableKey) {
           const sb = getBrowserSupabaseClient(cfg.supabaseUrl, cfg.supabasePublishableKey);
@@ -194,14 +210,25 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         throw new Error('Please confirm that you are 18 years or older.');
       }
 
-      if (config?.supabaseConfigured) {
-        const sb = getBrowserSupabaseClient(config.supabaseUrl, config.supabasePublishableKey);
+      const activeConfig = config || (await refreshConfig().catch(() => null));
+
+      if (activeConfig?.supabaseConfigured) {
+        const sb = getBrowserSupabaseClient(
+          activeConfig.supabaseUrl,
+          activeConfig.supabasePublishableKey
+        );
         if (!sb) throw new Error('Supabase client is unavailable.');
         const { data, error } = await sb.auth.signInAnonymously({
           options: turnstileToken ? { captchaToken: turnstileToken } : undefined,
         });
         if (error || !data.session) {
-          throw new Error(error?.message || 'Could not start an anonymous session.');
+          const msg = error?.message || '';
+          if (msg.toLowerCase().includes('anonymous sign-ins are disabled') || (error as { code?: string } | null)?.code === 'anonymous_provider_disabled') {
+            throw new Error(
+              'Anonymous sign-ins are currently disabled in the connected Supabase project. Enable Anonymous Sign-Ins under Supabase Authentication -> Providers (see /setup).'
+            );
+          }
+          throw new Error(msg || 'Could not start an anonymous session.');
         }
         const accessToken = data.session.access_token;
         const updated = await apiFetch<{ profile: ProfileDTO }>('/api/me', {
@@ -231,7 +258,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       await fetchUnread(created.token);
       setAuthPromptOpen(false);
     },
-    [config, fetchUnread, theme]
+    [config, fetchUnread, refreshConfig, theme]
   );
 
   const signInWithRecoveryEmail = useCallback(

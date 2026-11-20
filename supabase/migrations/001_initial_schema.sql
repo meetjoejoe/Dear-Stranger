@@ -286,7 +286,7 @@ CREATE TABLE IF NOT EXISTS public.admin_users (
 
 CREATE TABLE IF NOT EXISTS public.moderation_actions (
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-  moderator_id UUID NOT NULL REFERENCES public.profiles(id),
+  moderator_id UUID REFERENCES public.profiles(id) ON DELETE SET NULL,
   target_type TEXT NOT NULL CHECK (target_type IN ('letter', 'reply', 'account', 'report')),
   target_id UUID NOT NULL,
   action_type TEXT NOT NULL,

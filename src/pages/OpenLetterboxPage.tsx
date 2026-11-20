@@ -21,7 +21,7 @@ export function OpenLetterboxPage() {
           '/api/letters/open-letterbox',
           { token }
         );
-        if (mounted) setLetters(res.letters);
+        if (mounted) setLetters(Array.isArray(res?.letters) ? res.letters : []);
       } catch (err) {
         if (mounted) setError(err instanceof Error ? err.message : 'Unable to load Open Letterbox.');
       } finally {

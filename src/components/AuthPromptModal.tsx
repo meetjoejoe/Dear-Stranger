@@ -1,7 +1,9 @@
-import React, { useEffect, useRef, useState } from 'react';
+import React, { useState } from 'react';
+import { Link } from 'react-router-dom';
 import { X } from 'lucide-react';
 import { useAuth } from '../context/AuthContext.tsx';
 import { useToast } from '../context/ToastContext.tsx';
+import { TurnstileWidget } from './TurnstileWidget.tsx';
 
 export function AuthPromptModal() {
   const {
@@ -18,39 +20,10 @@ export function AuthPromptModal() {
   const [ageConfirmed, setAgeConfirmed] = useState(false);
   const [email, setEmail] = useState('');
   const [turnstileToken, setTurnstileToken] = useState<string>('');
+  const [turnstileResetKey, setTurnstileResetKey] = useState(0);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [emailSent, setEmailSent] = useState(false);
-  const turnstileRef = useRef<HTMLDivElement>(null);
-
-  useEffect(() => {
-    if (!authPromptOpen || !config?.turnstileSiteKey || mode !== 'anonymous') return;
-    const siteKey = config.turnstileSiteKey;
-    const scriptId = 'cf-turnstile-script';
-    const renderWidget = () => {
-      const win = window as unknown as {
-        turnstile?: { render: (el: HTMLElement, opts: Record<string, unknown>) => void };
-      };
-      if (win.turnstile && turnstileRef.current) {
-        turnstileRef.current.innerHTML = '';
-        win.turnstile.render(turnstileRef.current, {
-          sitekey: siteKey,
-          callback: (tok: string) => setTurnstileToken(tok),
-        });
-      }
-    };
-
-    if (!document.getElementById(scriptId)) {
-      const s = document.createElement('script');
-      s.id = scriptId;
-      s.src = 'https://challenges.cloudflare.com/turnstile/v0/api.js?render=explicit';
-      s.async = true;
-      s.onload = renderWidget;
-      document.head.appendChild(s);
-    } else {
-      renderWidget();
-    }
-  }, [authPromptOpen, config?.turnstileSiteKey, mode]);
 
   if (!authPromptOpen) return null;
 
@@ -68,8 +41,11 @@ export function AuthPromptModal() {
     setBusy(true);
     try {
       await signInAnonymously(true, turnstileToken || undefined);
+      setTurnstileToken('');
       showToast('Anonymous identity created. You can customise your nickname anytime.', 'success');
     } catch (err) {
+      setTurnstileToken('');
+      setTurnstileResetKey((k) => k + 1);
       setError(err instanceof Error ? err.message : 'Could not start anonymous session.');
     } finally {
       setBusy(false);
@@ -179,14 +155,24 @@ export function AuthPromptModal() {
               />
               <span className="leading-relaxed">
                 I confirm that I am <strong>18 years of age or older</strong> and agree to the{' '}
-                <a href="/guidelines" className="underline text-[#80545A] dark:text-[#B8838A]">
+                <Link
+                  to="/guidelines"
+                  onClick={closeAuthPrompt}
+                  className="underline text-[#80545A] dark:text-[#B8838A]"
+                >
                   Community Guidelines
-                </a>
+                </Link>
                 . <span className="text-xs text-[#77736D] dark:text-[#A19B92]">(Self-confirmed age notice; not a formal identity verification.)</span>
               </span>
             </label>
 
-            {config?.turnstileSiteKey && <div ref={turnstileRef} className="pt-1" />}
+            {config?.turnstileSiteKey && (
+              <TurnstileWidget
+                siteKey={config.turnstileSiteKey}
+                resetKey={turnstileResetKey}
+                onTokenChange={setTurnstileToken}
+              />
+            )}
 
             {error && <p className="text-sm text-[#80545A] dark:text-[#B8838A]">{error}</p>}
 

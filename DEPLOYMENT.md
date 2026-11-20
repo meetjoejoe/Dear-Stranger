@@ -41,3 +41,20 @@
    ```
 4. Health check endpoint: `GET /api/health`.
 5. To attach a custom domain later, map the domain in Cloud Run Domain Mappings and update `APP_URL` and Supabase Redirect URLs accordingly.
+
+## 5. Vercel Deployment
+
+1. The repository includes `vercel.json` and `/api/index.ts`, which route all `/api/*` requests to the shared Express API (`server/app.ts`) as a Vercel Serverless Function while serving the built Vite SPA from `dist/` and rewriting client routes to `/index.html`.
+2. In Vercel Project Settings -> **Environment Variables**, configure:
+   - `SUPABASE_URL`
+   - `SUPABASE_PUBLISHABLE_KEY`
+   - `SUPABASE_SECRET_KEY`
+   - Optional: `APP_URL`, `ADMIN_BOOTSTRAP_EMAILS`, `RESEND_API_KEY`, `RESEND_FROM_EMAIL`, `TURNSTILE_SITE_KEY`, `TURNSTILE_SECRET_KEY`.
+3. Ensure both SQL migrations (`001_initial_schema.sql` and `002_rls_and_functions.sql`) have been run and **Anonymous Sign-Ins** are enabled in Supabase Authentication -> Providers.
+4. Verify after deploy:
+   - `GET /api/health`
+   - `GET /api/config`
+   - `GET /api/categories`
+   - `GET /api/letters?limit=4`
+   - `GET /api/letters/letter-of-the-day`
+

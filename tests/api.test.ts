@@ -1,6 +1,7 @@
 import { after, before, describe, it } from 'node:test';
 import assert from 'node:assert/strict';
-import type { Server } from 'node:http';
+import http, { type Server } from 'node:http';
+import vercelHandler, { normalizeVercelApiUrl } from '../api/index.ts';
 import { createApp } from '../server.ts';
 import { injectLetterOpenGraph } from '../server/ogMeta.ts';
 import { resetRateLimitsForTest } from '../server/rateLimit.ts';
@@ -281,5 +282,220 @@ describe('Dear Stranger API & Security Verification', () => {
 
     const pii = screenContentForSafety('Call me at 555-123-4567 right away.');
     assert.equal(pii.requiresModeratorReview, true);
+  });
+
+  it('handles static-host fallback cleanly when /api backend is unavailable', async () => {
+    const store = new Map<string, string>();
+    (globalThis as unknown as { sessionStorage: Storage }).sessionStorage = {
+      getItem: (k: string) => store.get(k) ?? null,
+      setItem: (k: string, v: string) => {
+        store.set(k, v);
+      },
+      removeItem: (k: string) => {
+        store.delete(k);
+      },
+      clear: () => store.clear(),
+      key: (i: number) => Array.from(store.keys())[i] ?? null,
+      get length() {
+        return store.size;
+      },
+    };
+
+    const { handleClientSandboxRequest, DEFAULT_CATEGORIES } = await import(
+      '../src/lib/clientSandboxFallback.ts'
+    );
+    const session = await handleClientSandboxRequest<{ token: string; profile: { id: string } }>(
+      '/api/sandbox/session',
+      { method: 'POST', body: JSON.stringify({}) }
+    );
+    assert.ok(session.token);
+
+    await handleClientSandboxRequest('/api/me', {
+      method: 'PATCH',
+      token: session.token,
+      body: JSON.stringify({ confirmAge18Plus: true }),
+    });
+
+    const created = await handleClientSandboxRequest<{ letter: { id: string; title: string } }>(
+      '/api/letters',
+      {
+        method: 'POST',
+        token: session.token,
+        body: JSON.stringify({
+          title: 'Static fallback check',
+          body: 'This verifies static fallback works cleanly without 404 errors.',
+          categoryId: DEFAULT_CATEGORIES[0].id,
+          visibility: 'public',
+          status: 'published',
+        }),
+      }
+    );
+    assert.equal(created.letter.title, 'Static fallback check');
+  });
+
+  it('routes Vercel serverless rewrite URLs (/api/index?__vercel_path=...) cleanly without 404s and handles pre-parsed bodies', async () => {
+    sandboxStore.reset();
+    resetRateLimitsForTest();
+
+    assert.equal(normalizeVercelApiUrl('/api/index?__vercel_path=config'), '/api/config');
+    assert.equal(normalizeVercelApiUrl('/api/index?__vercel_path=categories'), '/api/categories');
+    assert.equal(normalizeVercelApiUrl('/api/index?__vercel_path=letters&limit=4'), '/api/letters?limit=4');
+    assert.equal(
+      normalizeVercelApiUrl('/api/index?__vercel_path=letters/letter-of-the-day'),
+      '/api/letters/letter-of-the-day'
+    );
+    assert.equal(normalizeVercelApiUrl('/api/index?__vercel_path='), '/api');
+
+    let preParseNextRequest = false;
+    const vercelSimServer = http.createServer((req, res) => {
+      if (preParseNextRequest && req.method === 'POST') {
+        const chunks: Buffer[] = [];
+        req.on('data', (c: Buffer) => chunks.push(c));
+        req.on('end', () => {
+          (req as http.IncomingMessage & { body?: unknown }).body = JSON.parse(
+            Buffer.concat(chunks).toString('utf8') || '{}'
+          );
+          void vercelHandler(req, res);
+        });
+        return;
+      }
+      void vercelHandler(req, res);
+    });
+
+    await new Promise<void>((resolve) => vercelSimServer.listen(0, '127.0.0.1', resolve));
+    const addr = vercelSimServer.address();
+    assert.ok(addr && typeof addr === 'object');
+    const vUrl = `http://127.0.0.1:${addr.port}`;
+
+    try {
+      const [cfgRes, catRes, lettersRes, lotdRes, missingRes] = await Promise.all([
+        fetch(`${vUrl}/api/index?__vercel_path=config`),
+        fetch(`${vUrl}/api/index?__vercel_path=categories`),
+        fetch(`${vUrl}/api/index?__vercel_path=letters&limit=4`),
+        fetch(`${vUrl}/api/index?__vercel_path=letters/letter-of-the-day`),
+        fetch(`${vUrl}/api/index?__vercel_path=does-not-exist`),
+      ]);
+
+      assert.equal(cfgRes.status, 200);
+      const cfgJson = (await cfgRes.json()) as { supabaseConfigured: boolean; platformAnnouncement: unknown };
+      assert.equal(typeof cfgJson.supabaseConfigured, 'boolean');
+      assert.ok(cfgJson.platformAnnouncement);
+
+      assert.equal(catRes.status, 200);
+      const catJson = (await catRes.json()) as { categories: Array<{ slug: string }> };
+      assert.equal(catJson.categories.length, 8);
+
+      assert.equal(lettersRes.status, 200);
+      const lettersJson = (await lettersRes.json()) as { letters: unknown[]; total: number };
+      assert.equal(Array.isArray(lettersJson.letters), true);
+
+      assert.equal(lotdRes.status, 200);
+      const lotdJson = (await lotdRes.json()) as { letter: unknown; editorNote: unknown };
+      assert.equal(lotdJson.letter, null);
+
+      assert.equal(missingRes.status, 404);
+      const missingJson = (await missingRes.json()) as { error: string };
+      assert.equal(missingJson.error, 'API endpoint not found.');
+
+      // Verify pre-parsed body handling (mimicking @vercel/node req.body)
+      preParseNextRequest = true;
+      const preParsedRes = await fetch(`${vUrl}/api/index?__vercel_path=sandbox/session`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({}),
+      });
+      assert.equal(preParsedRes.status, 201);
+      const preParsedData = (await preParsedRes.json()) as { token: string };
+      assert.ok(preParsedData.token);
+    } finally {
+      await new Promise<void>((resolve) => vercelSimServer.close(() => resolve()));
+    }
+  });
+
+  it('supports reports, blocking isolation, saved letters, and moderation appeals in dashboard', async () => {
+    sandboxStore.reset();
+    resetRateLimitsForTest();
+
+    const author = (await reqJson<{ token: string }>('/api/sandbox/session', { method: 'POST', body: '{}' })).data;
+    const reader = (await reqJson<{ token: string }>('/api/sandbox/session', { method: 'POST', body: '{}' })).data;
+    const admin = (
+      await reqJson<{ token: string }>('/api/sandbox/session', {
+        method: 'POST',
+        body: JSON.stringify({ asAdmin: true }),
+      })
+    ).data;
+
+    await reqJson('/api/me', { method: 'PATCH', token: author.token, body: JSON.stringify({ confirmAge18Plus: true }) });
+    await reqJson('/api/me', { method: 'PATCH', token: reader.token, body: JSON.stringify({ confirmAge18Plus: true }) });
+
+    const cats = (await reqJson<{ categories: Array<{ id: string }> }>('/api/categories')).data.categories;
+    const created = (
+      await reqJson<{ letter: { id: string } }>('/api/letters', {
+        method: 'POST',
+        token: author.token,
+        body: JSON.stringify({
+          title: 'Report and block check',
+          body: 'Testing blocking isolation, saved letters, reports, and appeals cleanly.',
+          categoryId: cats[0].id,
+          visibility: 'public',
+          status: 'published',
+        }),
+      })
+    ).data.letter;
+
+    // Save & report
+    const saveRes = await reqJson<{ isSaved: boolean }>(`/api/letters/${created.id}/save`, {
+      method: 'PUT',
+      token: reader.token,
+      body: JSON.stringify({ save: true }),
+    });
+    assert.equal(saveRes.status, 200);
+    assert.equal(saveRes.data.isSaved, true);
+
+    const reportRes = await reqJson<{ submitted: boolean }>('/api/reports', {
+      method: 'POST',
+      token: reader.token,
+      body: JSON.stringify({
+        targetType: 'letter',
+        targetId: created.id,
+        reason: 'spam_scams',
+        description: 'Testing moderation queue preview enrichment',
+      }),
+    });
+    assert.equal(reportRes.status, 201);
+
+    // Block author -> letter hidden from reader feed and direct detail
+    const blockRes = await reqJson<{ blocked: boolean }>('/api/blocks', {
+      method: 'POST',
+      token: reader.token,
+      body: JSON.stringify({ letterId: created.id }),
+    });
+    assert.equal(blockRes.status, 201);
+
+    const blockedFeed = await reqJson<{ letters: Array<{ id: string }> }>('/api/letters?limit=10', {
+      token: reader.token,
+    });
+    assert.equal(blockedFeed.data.letters.some((l) => l.id === created.id), false);
+
+    // Submit appeal -> returned in dashboard myAppeals & admin moderation reports
+    const appealRes = await reqJson<{ submitted: boolean }>('/api/appeals', {
+      method: 'POST',
+      token: author.token,
+      body: JSON.stringify({ note: 'Requesting human review of my letter status.' }),
+    });
+    assert.equal(appealRes.status, 201);
+
+    const authorDash = await reqJson<{ myAppeals: Array<{ appealNote: string | null }> }>('/api/dashboard', {
+      token: author.token,
+    });
+    assert.equal(authorDash.status, 200);
+    assert.equal(authorDash.data.myAppeals.length, 1);
+
+    const modData = await reqJson<{ reports: Array<{ targetPreview?: string }> }>('/api/admin/moderation', {
+      token: admin.token,
+    });
+    assert.equal(modData.status, 200);
+    assert.ok(modData.data.reports.length >= 2);
+    assert.ok(modData.data.reports.some((r) => (r.targetPreview || '').includes('Report and block check')));
   });
 });

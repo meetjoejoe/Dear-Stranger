@@ -27,9 +27,9 @@ export function HomePage() {
           { token }
         ),
       ]);
-      setRecentLetters(feedRes.letters);
-      setLetterOfTheDay(lotdRes.letter);
-      setEditorNote(lotdRes.editorNote);
+      setRecentLetters(Array.isArray(feedRes?.letters) ? feedRes.letters : []);
+      setLetterOfTheDay(lotdRes?.letter ?? null);
+      setEditorNote(lotdRes?.editorNote ?? null);
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Unable to load recent letters.');
     } finally {
@@ -146,15 +146,22 @@ export function HomePage() {
             ))}
           </div>
         ) : error ? (
-          <div className="rounded-lg border border-[#E8E5DF] dark:border-[#332F2A] bg-[#FFFFFF] dark:bg-[#201E1B] p-6 text-sm">
+          <div className="rounded-lg border border-[#E8E5DF] dark:border-[#332F2A] bg-[#FFFFFF] dark:bg-[#201E1B] p-6 text-sm space-y-3">
             <p className="text-[#80545A] dark:text-[#B8838A]">{error}</p>
-            <button
-              type="button"
-              onClick={() => void loadHomeData()}
-              className="mt-3 text-sm underline"
-            >
-              Try again
-            </button>
+            <div className="flex flex-wrap items-center gap-4">
+              <button
+                type="button"
+                onClick={() => void loadHomeData()}
+                className="text-sm underline"
+              >
+                Try again
+              </button>
+              {config?.supabaseSchemaReady === false && (
+                <Link to="/setup" className="text-sm underline text-[#80545A] dark:text-[#B8838A]">
+                  Open Setup &amp; Status
+                </Link>
+              )}
+            </div>
           </div>
         ) : recentLetters.length === 0 ? (
           <div className="rounded-lg border border-[#E8E5DF] dark:border-[#332F2A] bg-[#FFFFFF] dark:bg-[#201E1B] p-8 text-center space-y-4">

@@ -1,3 +1,4 @@
+import crypto from 'node:crypto';
 import { createClient, type SupabaseClient } from '@supabase/supabase-js';
 import dotenv from 'dotenv';
 
@@ -97,25 +98,29 @@ export function getSupabaseUserClient(accessToken?: string | null): SupabaseClie
   });
 }
 
-export async function verifyTurnstileToken(token: string | undefined | null, remoteIpHash?: string): Promise<boolean> {
+export async function verifyTurnstileToken(token: string | undefined | null, _remoteIpHash?: string): Promise<boolean> {
   const cfg = getServerConfig();
   if (!cfg.turnstileSecretKey) {
     return true;
   }
   if (!token) return false;
   try {
-    const form = new URLSearchParams();
-    form.append('secret', cfg.turnstileSecretKey);
-    form.append('response', token);
-    if (remoteIpHash) {
-      form.append('idempotency_key', remoteIpHash.slice(0, 32));
-    }
     const res = await fetch('https://challenges.cloudflare.com/turnstile/v0/siteverify', {
       method: 'POST',
-      body: form,
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({
+        secret: cfg.turnstileSecretKey,
+        response: token,
+        idempotency_key: crypto.randomUUID(),
+      }),
     });
     if (!res.ok) return false;
-    const data = (await res.json()) as { success?: boolean };
+    const data = (await res.json()) as { success?: boolean; 'error-codes'?: string[] };
+    if (!data.success && Array.isArray(data['error-codes']) && data['error-codes'].length > 0) {
+      console.warn('[turnstile] siteverify rejected token:', data['error-codes'].join(', '));
+    }
     return Boolean(data.success);
   } catch {
     return false;

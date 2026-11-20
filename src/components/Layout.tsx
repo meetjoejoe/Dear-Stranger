@@ -55,18 +55,42 @@ export function Layout({ children }: { children: React.ReactNode }) {
         </div>
       )}
 
-      {/* Unconfigured Supabase Honest Notice */}
+      {/* Unconfigured Supabase / Static Preview Honest Notice */}
       {config && !config.supabaseConfigured && (
         <div className="border-b border-[#E8E5DF] dark:border-[#332F2A] bg-[#F1EFE9] dark:bg-[#282521] px-4 py-2 text-xs text-[#77736D] dark:text-[#A19B92]">
           <div className="max-w-6xl mx-auto flex flex-wrap items-center justify-between gap-2">
             <span>
-              <strong>Sandbox Preview Mode:</strong> Supabase credentials are not configured; data is stored ephemerally in server memory.
+              {config.staticFallback ? (
+                <>
+                  <strong>Static Preview Mode:</strong> Backend API was not detected on this host; data is stored ephemerally in this browser tab.
+                </>
+              ) : (
+                <>
+                  <strong>Sandbox Preview Mode:</strong> Supabase credentials are not configured; data is stored ephemerally in server memory.
+                </>
+              )}
             </span>
             <Link
               to="/setup"
               className="font-medium text-[#80545A] dark:text-[#B8838A] underline whitespace-nowrap shrink-0"
             >
               View Supabase Setup Guide
+            </Link>
+          </div>
+        </div>
+      )}
+
+      {config?.supabaseConfigured && config.supabaseSchemaReady === false && (
+        <div className="border-b border-[#E8E5DF] dark:border-[#332F2A] bg-[#F1EFE9] dark:bg-[#282521] px-4 py-2 text-xs text-[#77736D] dark:text-[#A19B92]">
+          <div className="max-w-6xl mx-auto flex flex-wrap items-center justify-between gap-2">
+            <span>
+              <strong>Database Migrations Pending:</strong> Supabase is connected, but schema tables have not been initialized yet.
+            </span>
+            <Link
+              to="/setup"
+              className="font-medium text-[#80545A] dark:text-[#B8838A] underline whitespace-nowrap shrink-0"
+            >
+              View Setup &amp; Status
             </Link>
           </div>
         </div>

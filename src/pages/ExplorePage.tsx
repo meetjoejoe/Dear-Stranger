@@ -8,7 +8,7 @@ import { useToast } from '../context/ToastContext.tsx';
 import { LetterCard } from '../components/LetterCard.tsx';
 
 export function ExplorePage() {
-  const { categories, token } = useAuth();
+  const { config, categories, token } = useAuth();
   const { showToast } = useToast();
   const navigate = useNavigate();
   const [searchParams, setSearchParams] = useSearchParams();
@@ -46,10 +46,11 @@ export function ExplorePage() {
           hasMore: boolean;
         }>(`/api/letters?${qs.toString()}`, { token });
 
-        setLetters((prev) => (append ? [...prev, ...res.letters] : res.letters));
-        setTotal(res.total);
-        setPage(res.page);
-        setHasMore(res.hasMore);
+        const nextLetters = Array.isArray(res?.letters) ? res.letters : [];
+        setLetters((prev) => (append ? [...prev, ...nextLetters] : nextLetters));
+        setTotal(typeof res?.total === 'number' ? res.total : nextLetters.length);
+        setPage(typeof res?.page === 'number' ? res.page : pageNum);
+        setHasMore(Boolean(res?.hasMore));
       } catch (err) {
         setError(err instanceof Error ? err.message : 'Unable to load public letters.');
       } finally {
@@ -216,13 +217,20 @@ export function ExplorePage() {
         ) : error ? (
           <div className="rounded-lg border border-[#E8E5DF] dark:border-[#332F2A] bg-[#FFFFFF] dark:bg-[#201E1B] p-6 text-sm space-y-3">
             <p className="text-[#80545A] dark:text-[#B8838A]">{error}</p>
-            <button
-              type="button"
-              onClick={() => void fetchFeed(1, false)}
-              className="underline font-medium"
-            >
-              Retry
-            </button>
+            <div className="flex flex-wrap items-center gap-4">
+              <button
+                type="button"
+                onClick={() => void fetchFeed(1, false)}
+                className="underline font-medium"
+              >
+                Retry
+              </button>
+              {config?.supabaseSchemaReady === false && (
+                <Link to="/setup" className="underline text-[#80545A] dark:text-[#B8838A]">
+                  Open Setup &amp; Status
+                </Link>
+              )}
+            </div>
           </div>
         ) : letters.length === 0 ? (
           <div className="rounded-lg border border-[#E8E5DF] dark:border-[#332F2A] bg-[#FFFFFF] dark:bg-[#201E1B] p-10 text-center space-y-3">
