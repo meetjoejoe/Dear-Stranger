@@ -59,12 +59,19 @@ export function AuthPromptModal() {
       setError('Please enter your linked recovery email.');
       return;
     }
+    if (config?.turnstileSiteKey && !turnstileToken) {
+      setError('Please complete the verification check.');
+      return;
+    }
     setBusy(true);
     try {
-      await signInWithRecoveryEmail(email);
+      await signInWithRecoveryEmail(email, turnstileToken || undefined);
+      setTurnstileToken('');
       setEmailSent(true);
       showToast('Check your email for your sign-in link.', 'success');
     } catch (err) {
+      setTurnstileToken('');
+      setTurnstileResetKey((k) => k + 1);
       setError(err instanceof Error ? err.message : 'Could not send sign-in link.');
     } finally {
       setBusy(false);
@@ -218,6 +225,14 @@ export function AuthPromptModal() {
                 Email recovery sign-in requires Supabase Auth credentials. Use &ldquo;New Anonymous
                 Identity&rdquo; to test in Sandbox Preview Mode.
               </p>
+            )}
+
+            {config?.turnstileSiteKey && (
+              <TurnstileWidget
+                siteKey={config.turnstileSiteKey}
+                resetKey={turnstileResetKey}
+                onTokenChange={setTurnstileToken}
+              />
             )}
 
             {emailSent && (

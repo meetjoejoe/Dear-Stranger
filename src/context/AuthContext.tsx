@@ -22,7 +22,7 @@ interface AuthContextValue {
   openAuthPrompt: (reason?: string) => void;
   closeAuthPrompt: () => void;
   signInAnonymously: (confirmAge18Plus: boolean, turnstileToken?: string) => Promise<void>;
-  signInWithRecoveryEmail: (email: string) => Promise<void>;
+  signInWithRecoveryEmail: (email: string, turnstileToken?: string) => Promise<void>;
   linkRecoveryEmail: (email: string) => Promise<void>;
   signOut: () => Promise<void>;
   refreshProfile: () => Promise<void>;
@@ -262,7 +262,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   );
 
   const signInWithRecoveryEmail = useCallback(
-    async (email: string) => {
+    async (email: string, turnstileToken?: string) => {
       if (!config?.supabaseConfigured) {
         throw new Error('Email magic-link sign-in requires Supabase Auth to be configured.');
       }
@@ -270,7 +270,10 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       if (!sb) throw new Error('Supabase client unavailable.');
       const { error } = await sb.auth.signInWithOtp({
         email: email.trim(),
-        options: { emailRedirectTo: `${window.location.origin}/dashboard` },
+        options: {
+          emailRedirectTo: `${window.location.origin}/dashboard`,
+          ...(turnstileToken ? { captchaToken: turnstileToken } : {}),
+        },
       });
       if (error) throw new Error(error.message);
     },
