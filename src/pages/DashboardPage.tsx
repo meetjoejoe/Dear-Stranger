@@ -1,5 +1,5 @@
 import React, { useCallback, useEffect, useState } from 'react';
-import { Link } from 'react-router-dom';
+import { Link, useSearchParams } from 'react-router-dom';
 import type {
   BlockedAccountDTO,
   NotificationDTO,
@@ -20,6 +20,21 @@ type DashboardTab =
   | 'notifications'
   | 'account'
   | 'privacy';
+
+const VALID_TABS: DashboardTab[] = [
+  'letters',
+  'replies',
+  'conversations',
+  'saved',
+  'notifications',
+  'account',
+  'privacy',
+];
+
+function parseTab(raw: string | null): DashboardTab {
+  if (raw === 'settings') return 'account';
+  return VALID_TABS.includes(raw as DashboardTab) ? (raw as DashboardTab) : 'letters';
+}
 
 interface DashboardPayload {
   myLetters: PublicLetterDTO[];
@@ -54,8 +69,9 @@ export function DashboardPage() {
     toggleSandboxAdmin,
   } = useAuth();
   const { showToast } = useToast();
+  const [searchParams, setSearchParams] = useSearchParams();
 
-  const [tab, setTab] = useState<DashboardTab>('letters');
+  const tab = parseTab(searchParams.get('tab'));
   const [data, setData] = useState<DashboardPayload | null>(null);
   const [loading, setLoading] = useState(false);
 
@@ -64,6 +80,12 @@ export function DashboardPage() {
   const [appealNote, setAppealNote] = useState('');
   const [confirmDeleteText, setConfirmDeleteText] = useState('');
   const [busyAction, setBusyAction] = useState(false);
+
+  const selectTab = (next: DashboardTab) => {
+    const updated = new URLSearchParams(searchParams);
+    updated.set('tab', next);
+    setSearchParams(updated, { replace: true });
+  };
 
   const loadDashboard = useCallback(async () => {
     if (!token) return;
@@ -85,9 +107,9 @@ export function DashboardPage() {
 
   if (!token || !profile) {
     return (
-      <div className="max-w-3xl mx-auto px-4 sm:px-6 py-16">
-        <div className="rounded-lg border border-[#E8E5DF] dark:border-[#332F2A] bg-[#FFFFFF] dark:bg-[#201E1B] p-8 text-center space-y-4">
-          <h1 className="font-editorial text-3xl font-semibold">Your Personal Space</h1>
+      <div className="px-4 sm:px-8 py-14">
+        <div className="rounded-md border border-[#E8E5DF] dark:border-[#332F2A] bg-[#FFFFFF] dark:bg-[#201E1B] p-8 text-center space-y-4">
+          <h1 className="font-editorial text-3xl font-semibold">Your Personal Desk</h1>
           <p className="text-sm text-[#77736D] dark:text-[#A19B92] max-w-md mx-auto leading-relaxed">
             Sign in with an anonymous identity or a linked recovery email to view your letters,
             replies, saved bookmarks, notifications, and privacy settings.
@@ -278,37 +300,38 @@ export function DashboardPage() {
 
   const tabs: Array<[DashboardTab, string]> = [
     ['letters', `My Letters (${data?.myLetters.length ?? 0})`],
-    ['replies', `My Replies (${data?.myReplies.length ?? 0})`],
-    ['conversations', `Conversations (${data?.conversations.length ?? 0})`],
+    ['replies', `Replies (${data?.myReplies.length ?? 0})`],
+    ['conversations', `Threads (${data?.conversations.length ?? 0})`],
     ['saved', `Saved (${data?.savedLetters.length ?? 0})`],
     ['notifications', `Notifications${unreadCount > 0 ? ` (${unreadCount})` : ''}`],
-    ['account', 'Account Settings'],
+    ['account', 'Settings'],
     ['privacy', 'Privacy & Safety'],
   ];
 
   return (
-    <div className="max-w-5xl mx-auto px-4 sm:px-6 py-10 sm:py-14 space-y-8">
-      <div className="pb-6 border-b border-[#E8E5DF] dark:border-[#332F2A] flex flex-wrap items-end justify-between gap-4">
+    <div>
+      {/* Header */}
+      <div className="px-4 sm:px-6 py-6 border-b border-[#E8E5DF] dark:border-[#332F2A] flex flex-wrap items-end justify-between gap-4">
         <div>
-          <p className="text-xs uppercase tracking-widest text-[#80545A] dark:text-[#B8838A] font-medium">
+          <p className="text-[11px] uppercase tracking-widest text-[#80545A] dark:text-[#B8838A] font-medium">
             Anonymous Identity
           </p>
-          <h1 className="font-editorial text-3xl sm:text-4xl font-semibold mt-1">
+          <h1 className="font-editorial text-2xl sm:text-3xl font-semibold mt-0.5">
             {profile.displayName}
           </h1>
           <p className="text-xs text-[#77736D] dark:text-[#A19B92] mt-1">
             Status: {profile.accountStatus} ·{' '}
             {profile.recoveryEmailLinked
               ? 'Recovery email linked'
-              : 'Unlinked anonymous session (link an email in Account Settings to prevent loss)'}
+              : 'Unlinked session (link an email under Settings to prevent loss)'}
           </p>
         </div>
 
-        <div className="flex items-center gap-3">
+        <div className="flex items-center gap-2.5">
           {profile.isAdmin && (
             <Link
               to="/moderation"
-              className="rounded-md border border-[#80545A] text-[#80545A] dark:border-[#B8838A] dark:text-[#B8838A] px-3.5 py-2 text-xs font-medium"
+              className="rounded-md border border-[#80545A] text-[#80545A] dark:border-[#B8838A] dark:text-[#B8838A] px-3 py-1.5 text-xs font-medium whitespace-nowrap shrink-0"
             >
               Moderation Console
             </Link>
@@ -316,7 +339,7 @@ export function DashboardPage() {
           <button
             type="button"
             onClick={() => void signOut()}
-            className="rounded-md border border-[#E8E5DF] dark:border-[#332F2A] px-3.5 py-2 text-xs text-[#77736D] hover:text-[#252525] dark:text-[#A19B92] dark:hover:text-[#EAE6DF]"
+            className="rounded-md border border-[#E8E5DF] dark:border-[#332F2A] px-3 py-1.5 text-xs text-[#77736D] hover:text-[#252525] dark:text-[#A19B92] dark:hover:text-[#EAE6DF] whitespace-nowrap shrink-0"
           >
             Sign Out
           </button>
@@ -325,7 +348,7 @@ export function DashboardPage() {
 
       {/* Moderation Warning if restricted/suspended */}
       {profile.accountStatus !== 'active' && (
-        <div className="rounded-lg border border-[#80545A] bg-[#FFFFFF] dark:bg-[#201E1B] p-5 text-sm space-y-2">
+        <div className="px-4 sm:px-6 py-4 border-b border-[#E8E5DF] dark:border-[#332F2A] bg-[#FFFFFF] dark:bg-[#201E1B] text-sm space-y-1.5">
           <p className="font-medium text-[#80545A] dark:text-[#B8838A]">
             Your account status is currently: {profile.accountStatus}
           </p>
@@ -333,14 +356,14 @@ export function DashboardPage() {
             <p className="text-[#77736D] dark:text-[#A19B92]">Reason: {profile.restrictionReason}</p>
           )}
           <p className="text-xs text-[#77736D] dark:text-[#A19B92]">
-            You can submit an appeal under the Privacy &amp; Safety tab.
+            You can submit an appeal under Privacy &amp; Safety.
           </p>
         </div>
       )}
 
-      {/* Navigation Tabs */}
+      {/* Editorial Underline Tabs */}
       <div
-        className="flex flex-wrap gap-1.5 p-1 rounded-lg bg-[#F1EFE9] dark:bg-[#282521]"
+        className="border-b border-[#E8E5DF] dark:border-[#332F2A] px-4 sm:px-6 overflow-x-auto scrollbar-none flex items-center gap-5"
         role="tablist"
       >
         {tabs.map(([id, label]) => (
@@ -349,11 +372,11 @@ export function DashboardPage() {
             type="button"
             role="tab"
             aria-selected={tab === id}
-            onClick={() => setTab(id)}
-            className={`px-3 py-1.5 text-xs font-medium rounded-md transition-colors whitespace-nowrap shrink-0 tabular-nums ${
+            onClick={() => selectTab(id)}
+            className={`py-3 text-xs font-medium whitespace-nowrap shrink-0 border-b-2 transition-colors tabular-nums ${
               tab === id
-                ? 'bg-[#FFFFFF] dark:bg-[#201E1B] text-[#252525] dark:text-[#EAE6DF]'
-                : 'text-[#77736D] dark:text-[#A19B92] hover:text-[#252525] dark:hover:text-[#EAE6DF]'
+                ? 'border-[#80545A] dark:border-[#B8838A] text-[#252525] dark:text-[#EAE6DF]'
+                : 'border-transparent text-[#77736D] dark:text-[#A19B92] hover:text-[#252525] dark:hover:text-[#EAE6DF]'
             }`}
           >
             {label}
@@ -362,13 +385,15 @@ export function DashboardPage() {
       </div>
 
       {loading && !data ? (
-        <div className="h-48 rounded-lg border border-[#E8E5DF] dark:border-[#332F2A] bg-[#FFFFFF] dark:bg-[#201E1B] animate-pulse" />
+        <div className="p-6">
+          <div className="h-44 rounded-md border border-[#E8E5DF] dark:border-[#332F2A] bg-[#FFFFFF] dark:bg-[#201E1B] animate-pulse" />
+        </div>
       ) : (
         <div>
           {tab === 'letters' && (
-            <div className="space-y-4">
+            <div>
               {!data || data.myLetters.length === 0 ? (
-                <div className="rounded-lg border border-[#E8E5DF] dark:border-[#332F2A] bg-[#FFFFFF] dark:bg-[#201E1B] p-8 text-center space-y-3">
+                <div className="px-4 sm:px-6 py-12 text-center space-y-3">
                   <p className="text-sm text-[#77736D] dark:text-[#A19B92]">
                     You haven&apos;t written any letters yet.
                   </p>
@@ -381,10 +406,18 @@ export function DashboardPage() {
                 </div>
               ) : (
                 data.myLetters.map((l) => (
-                  <div key={l.id} className="space-y-2">
-                    <LetterCard letter={l} showVisibility />
-                    <div className="flex flex-wrap items-center gap-3 px-2 text-xs text-[#77736D] dark:text-[#A19B92]">
-                      <Link to={`/write?edit=${l.id}`} className="underline hover:text-[#252525] dark:hover:text-[#EAE6DF]">
+                  <div key={l.id} className="border-b border-[#E8E5DF] dark:border-[#332F2A]">
+                    <LetterCard
+                      letter={l}
+                      showVisibility
+                      variant="timeline"
+                      onUpdated={() => void loadDashboard()}
+                    />
+                    <div className="flex flex-wrap items-center gap-4 px-4 sm:px-6 pb-4 text-xs text-[#77736D] dark:text-[#A19B92]">
+                      <Link
+                        to={`/write?edit=${l.id}`}
+                        className="underline hover:text-[#252525] dark:hover:text-[#EAE6DF]"
+                      >
                         Edit
                       </Link>
                       {l.status === 'published' && (
@@ -411,21 +444,21 @@ export function DashboardPage() {
           )}
 
           {tab === 'replies' && (
-            <div className="space-y-4">
+            <div className="divide-y divide-[#E8E5DF] dark:divide-[#332F2A]">
               {!data || data.myReplies.length === 0 ? (
-                <div className="rounded-lg border border-[#E8E5DF] dark:border-[#332F2A] bg-[#FFFFFF] dark:bg-[#201E1B] p-8 text-center text-sm text-[#77736D] dark:text-[#A19B92]">
+                <div className="px-4 sm:px-6 py-12 text-center text-sm text-[#77736D] dark:text-[#A19B92]">
                   You haven&apos;t written any replies yet.
                 </div>
               ) : (
                 data.myReplies.map((r) => (
-                  <div
-                    key={r.id}
-                    className="rounded-lg border border-[#E8E5DF] dark:border-[#332F2A] bg-[#FFFFFF] dark:bg-[#201E1B] p-5 space-y-2"
-                  >
+                  <div key={r.id} className="px-4 sm:px-6 py-5 space-y-2">
                     <div className="flex items-center justify-between text-xs text-[#77736D] dark:text-[#A19B92]">
                       <span>
                         On{' '}
-                        <Link to={`/letters/${r.letterId}`} className="underline text-[#252525] dark:text-[#EAE6DF]">
+                        <Link
+                          to={`/letters/${r.letterId}`}
+                          className="underline text-[#252525] dark:text-[#EAE6DF]"
+                        >
                           {r.letterTitle || 'Untitled letter'}
                         </Link>{' '}
                         · {formatEditorialDate(r.createdAt)}
@@ -446,28 +479,36 @@ export function DashboardPage() {
           )}
 
           {tab === 'conversations' && (
-            <div className="space-y-4">
+            <div>
               {!data || data.conversations.length === 0 ? (
-                <div className="rounded-lg border border-[#E8E5DF] dark:border-[#332F2A] bg-[#FFFFFF] dark:bg-[#201E1B] p-8 text-center text-sm text-[#77736D] dark:text-[#A19B92]">
+                <div className="px-4 sm:px-6 py-12 text-center text-sm text-[#77736D] dark:text-[#A19B92]">
                   Letters and reply threads you participate in will appear here.
                 </div>
               ) : (
-                data.conversations.map((l) => <LetterCard key={l.id} letter={l} showVisibility />)
+                data.conversations.map((l) => (
+                  <LetterCard
+                    key={l.id}
+                    letter={l}
+                    showVisibility
+                    onUpdated={() => void loadDashboard()}
+                  />
+                ))
               )}
             </div>
           )}
 
           {tab === 'saved' && (
-            <div className="space-y-4">
+            <div>
               {!data || data.savedLetters.length === 0 ? (
-                <div className="rounded-lg border border-[#E8E5DF] dark:border-[#332F2A] bg-[#FFFFFF] dark:bg-[#201E1B] p-8 text-center text-sm text-[#77736D] dark:text-[#A19B92]">
-                  Saved letters are strictly private to you. Bookmark any letter while reading to keep it here.
+                <div className="px-4 sm:px-6 py-12 text-center text-sm text-[#77736D] dark:text-[#A19B92]">
+                  Saved letters are strictly private to you. Bookmark any letter while reading or
+                  browsing to keep it here.
                 </div>
               ) : (
                 data.savedLetters.map((l) => (
-                  <div key={l.id} className="space-y-2">
-                    <LetterCard letter={l} />
-                    <div className="px-2">
+                  <div key={l.id} className="border-b border-[#E8E5DF] dark:border-[#332F2A]">
+                    <LetterCard letter={l} onUpdated={() => void loadDashboard()} />
+                    <div className="px-4 sm:px-6 pb-4">
                       <button
                         type="button"
                         onClick={() => void handleUnsave(l.id)}
@@ -483,9 +524,9 @@ export function DashboardPage() {
           )}
 
           {tab === 'notifications' && (
-            <div className="space-y-4">
+            <div className="divide-y divide-[#E8E5DF] dark:divide-[#332F2A]">
               {data && data.notifications.length > 0 && unreadCount > 0 && (
-                <div className="flex justify-end">
+                <div className="px-4 sm:px-6 py-3 flex justify-end bg-[#F1EFE9]/40 dark:bg-[#201E1B]/40">
                   <button
                     type="button"
                     onClick={() => void handleMarkNotificationsRead()}
@@ -497,17 +538,15 @@ export function DashboardPage() {
               )}
 
               {!data || data.notifications.length === 0 ? (
-                <div className="rounded-lg border border-[#E8E5DF] dark:border-[#332F2A] bg-[#FFFFFF] dark:bg-[#201E1B] p-8 text-center text-sm text-[#77736D] dark:text-[#A19B92]">
+                <div className="px-4 sm:px-6 py-12 text-center text-sm text-[#77736D] dark:text-[#A19B92]">
                   No notifications yet.
                 </div>
               ) : (
                 data.notifications.map((n) => (
                   <div
                     key={n.id}
-                    className={`rounded-lg border p-5 flex items-start justify-between gap-4 ${
-                      n.isRead
-                        ? 'border-[#E8E5DF] dark:border-[#332F2A] bg-[#FFFFFF] dark:bg-[#201E1B]'
-                        : 'border-[#80545A]/60 dark:border-[#B8838A]/60 bg-[#FFFFFF] dark:bg-[#201E1B]'
+                    className={`px-4 sm:px-6 py-5 flex items-start justify-between gap-4 ${
+                      n.isRead ? '' : 'bg-[#FFFFFF]/80 dark:bg-[#201E1B]/80'
                     }`}
                   >
                     <div className="space-y-1">
@@ -529,7 +568,7 @@ export function DashboardPage() {
                       <button
                         type="button"
                         onClick={() => void handleMarkNotificationsRead(n.id)}
-                        className="text-xs underline shrink-0"
+                        className="text-xs underline shrink-0 text-[#80545A] dark:text-[#B8838A]"
                       >
                         Mark read
                       </button>
@@ -541,17 +580,20 @@ export function DashboardPage() {
           )}
 
           {tab === 'account' && (
-            <div className="space-y-6 max-w-2xl">
+            <div className="p-4 sm:p-6 space-y-6">
               {/* Display Nickname */}
               <form
                 onSubmit={handleSaveNickname}
-                className="rounded-lg border border-[#E8E5DF] dark:border-[#332F2A] bg-[#FFFFFF] dark:bg-[#201E1B] p-6 space-y-4"
+                className="rounded-md border border-[#E8E5DF] dark:border-[#332F2A] bg-[#FFFFFF] dark:bg-[#201E1B] p-5 sm:p-6 space-y-4"
               >
-                <h2 className="font-editorial text-2xl font-semibold">Anonymous Display Nickname</h2>
+                <h2 className="font-editorial text-2xl font-semibold">
+                  Anonymous Display Nickname
+                </h2>
                 <p className="text-xs text-[#77736D] dark:text-[#A19B92]">
-                  Choose a nickname that does not reveal your real identity (letters, numbers, underscores).
+                  Choose a nickname that does not reveal your real identity (letters, numbers,
+                  underscores).
                 </p>
-                <div className="flex gap-2">
+                <div className="flex flex-col sm:flex-row gap-2">
                   <input
                     type="text"
                     value={nicknameInput}
@@ -561,7 +603,7 @@ export function DashboardPage() {
                   <button
                     type="submit"
                     disabled={busyAction}
-                    className="rounded-md bg-[#80545A] hover:bg-[#6C454A] text-white px-4 py-2 text-sm font-medium disabled:opacity-50"
+                    className="rounded-md bg-[#80545A] hover:bg-[#6C454A] text-white px-4 py-2 text-sm font-medium disabled:opacity-50 whitespace-nowrap shrink-0"
                   >
                     Update
                   </button>
@@ -571,15 +613,17 @@ export function DashboardPage() {
               {/* Recovery Email Linking */}
               <form
                 onSubmit={handleLinkEmail}
-                className="rounded-lg border border-[#E8E5DF] dark:border-[#332F2A] bg-[#FFFFFF] dark:bg-[#201E1B] p-6 space-y-4"
+                className="rounded-md border border-[#E8E5DF] dark:border-[#332F2A] bg-[#FFFFFF] dark:bg-[#201E1B] p-5 sm:p-6 space-y-4"
               >
-                <h2 className="font-editorial text-2xl font-semibold">Account Recovery Protection</h2>
+                <h2 className="font-editorial text-2xl font-semibold">
+                  Account Recovery Protection
+                </h2>
                 <p className="text-xs text-[#77736D] dark:text-[#A19B92] leading-relaxed">
                   {profile.recoveryEmailLinked
                     ? 'A verified recovery email is linked to this identity. Your email is never shown publicly.'
                     : 'Unlinked anonymous sessions are lost if browser storage is cleared. Link an email address to keep your letters and replies recoverable without changing your anonymous display name.'}
                 </p>
-                <div className="flex gap-2">
+                <div className="flex flex-col sm:flex-row gap-2">
                   <input
                     type="email"
                     value={recoveryEmailInput}
@@ -590,7 +634,7 @@ export function DashboardPage() {
                   <button
                     type="submit"
                     disabled={busyAction}
-                    className="rounded-md border border-[#80545A] text-[#80545A] dark:border-[#B8838A] dark:text-[#B8838A] px-4 py-2 text-sm font-medium"
+                    className="rounded-md border border-[#80545A] text-[#80545A] dark:border-[#B8838A] dark:text-[#B8838A] px-4 py-2 text-sm font-medium whitespace-nowrap shrink-0"
                   >
                     Link Email
                   </button>
@@ -598,9 +642,9 @@ export function DashboardPage() {
               </form>
 
               {/* Appearance & Notification Preferences */}
-              <div className="rounded-lg border border-[#E8E5DF] dark:border-[#332F2A] bg-[#FFFFFF] dark:bg-[#201E1B] p-6 space-y-4">
+              <div className="rounded-md border border-[#E8E5DF] dark:border-[#332F2A] bg-[#FFFFFF] dark:bg-[#201E1B] p-5 sm:p-6 space-y-4">
                 <h2 className="font-editorial text-2xl font-semibold">Theme &amp; Notifications</h2>
-                <div className="flex items-center justify-between text-sm">
+                <div className="flex flex-wrap items-center justify-between gap-3 text-sm">
                   <span>Color theme</span>
                   <div className="flex gap-2">
                     <button
@@ -630,7 +674,7 @@ export function DashboardPage() {
 
                 {data && (
                   <div className="pt-3 border-t border-[#E8E5DF] dark:border-[#332F2A] space-y-3 text-sm">
-                    <label className="flex items-center justify-between cursor-pointer">
+                    <label className="flex items-center justify-between gap-4 cursor-pointer">
                       <span>In-app notifications for replies to my letters</span>
                       <input
                         type="checkbox"
@@ -641,22 +685,29 @@ export function DashboardPage() {
                         className="accent-[#80545A]"
                       />
                     </label>
-                    <label className="flex items-center justify-between cursor-pointer">
+                    <label className="flex items-center justify-between gap-4 cursor-pointer">
                       <span>In-app notifications for conversation responses</span>
                       <input
                         type="checkbox"
                         checked={data.preferences.conversationNotificationsEnabled}
                         onChange={(e) =>
-                          void handlePrefToggle('conversationNotificationsEnabled', e.target.checked)
+                          void handlePrefToggle(
+                            'conversationNotificationsEnabled',
+                            e.target.checked
+                          )
                         }
                         className="accent-[#80545A]"
                       />
                     </label>
-                    <label className="flex items-center justify-between cursor-pointer">
+                    <label className="flex items-center justify-between gap-4 cursor-pointer">
                       <span>
                         Email notifications via Resend{' '}
                         <span className="text-xs text-[#77736D] dark:text-[#A19B92]">
-                          ({config?.emailConfigured ? 'configured' : 'requires RESEND_API_KEY & linked email'})
+                          (
+                          {config?.emailConfigured
+                            ? 'configured'
+                            : 'requires RESEND_API_KEY & linked email'}
+                          )
                         </span>
                       </span>
                       <input
@@ -673,7 +724,7 @@ export function DashboardPage() {
               </div>
 
               {/* Account Deletion */}
-              <div className="rounded-lg border border-[#80545A]/50 bg-[#FFFFFF] dark:bg-[#201E1B] p-6 space-y-3">
+              <div className="rounded-md border border-[#80545A]/50 bg-[#FFFFFF] dark:bg-[#201E1B] p-5 sm:p-6 space-y-3">
                 <h2 className="font-editorial text-2xl font-semibold text-[#80545A] dark:text-[#B8838A]">
                   Delete Account
                 </h2>
@@ -681,7 +732,7 @@ export function DashboardPage() {
                   Permanently deletes your anonymous identity, letters, replies, saved letters, and
                   notifications. Type <strong>DELETE</strong> to confirm.
                 </p>
-                <div className="flex gap-2">
+                <div className="flex flex-col sm:flex-row gap-2">
                   <input
                     type="text"
                     value={confirmDeleteText}
@@ -693,7 +744,7 @@ export function DashboardPage() {
                     type="button"
                     disabled={confirmDeleteText !== 'DELETE' || busyAction}
                     onClick={() => void handleDeleteAccount()}
-                    className="rounded-md bg-[#80545A] text-white px-4 py-2 text-sm font-medium disabled:opacity-40"
+                    className="rounded-md bg-[#80545A] text-white px-4 py-2 text-sm font-medium disabled:opacity-40 whitespace-nowrap shrink-0"
                   >
                     Delete Account
                   </button>
@@ -703,9 +754,11 @@ export function DashboardPage() {
           )}
 
           {tab === 'privacy' && (
-            <div className="space-y-6 max-w-2xl">
-              <div className="rounded-lg border border-[#E8E5DF] dark:border-[#332F2A] bg-[#FFFFFF] dark:bg-[#201E1B] p-6 space-y-3">
-                <h2 className="font-editorial text-2xl font-semibold">Blocked Anonymous Accounts</h2>
+            <div className="p-4 sm:p-6 space-y-6">
+              <div className="rounded-md border border-[#E8E5DF] dark:border-[#332F2A] bg-[#FFFFFF] dark:bg-[#201E1B] p-5 sm:p-6 space-y-3">
+                <h2 className="font-editorial text-2xl font-semibold">
+                  Blocked Anonymous Accounts
+                </h2>
                 {!data || data.blockedAccounts.length === 0 ? (
                   <p className="text-sm text-[#77736D] dark:text-[#A19B92]">
                     You haven&apos;t blocked any accounts.
@@ -730,12 +783,12 @@ export function DashboardPage() {
 
               <form
                 onSubmit={handleAppeal}
-                className="rounded-lg border border-[#E8E5DF] dark:border-[#332F2A] bg-[#FFFFFF] dark:bg-[#201E1B] p-6 space-y-3"
+                className="rounded-md border border-[#E8E5DF] dark:border-[#332F2A] bg-[#FFFFFF] dark:bg-[#201E1B] p-5 sm:p-6 space-y-3"
               >
                 <h2 className="font-editorial text-2xl font-semibold">Moderation Appeals</h2>
                 <p className="text-xs text-[#77736D] dark:text-[#A19B92]">
-                  If your letter or account received a moderation decision you believe was in error,
-                  submit an appeal for human review.
+                  If your letter or account received a moderation decision you believe was in
+                  error, submit an appeal for human review.
                 </p>
                 <textarea
                   rows={3}
@@ -763,8 +816,15 @@ export function DashboardPage() {
                           className="rounded-md border border-[#E8E5DF] dark:border-[#332F2A] bg-[#F8F7F3] dark:bg-[#181715] p-3 text-xs space-y-1"
                         >
                           <div className="flex items-center justify-between gap-2 text-[#77736D] dark:text-[#A19B92]">
-                            <span>Status: <strong className="text-[#252525] dark:text-[#EAE6DF]">{appeal.status}</strong></span>
-                            <span>{formatEditorialDate(appeal.appealedAt || appeal.createdAt)}</span>
+                            <span>
+                              Status:{' '}
+                              <strong className="text-[#252525] dark:text-[#EAE6DF]">
+                                {appeal.status}
+                              </strong>
+                            </span>
+                            <span>
+                              {formatEditorialDate(appeal.appealedAt || appeal.createdAt)}
+                            </span>
                           </div>
                           {appeal.appealNote && <p className="text-sm">{appeal.appealNote}</p>}
                         </li>
@@ -775,7 +835,7 @@ export function DashboardPage() {
               </form>
 
               {config && !config.supabaseConfigured && (
-                <div className="rounded-lg border border-[#E8E5DF] dark:border-[#332F2A] bg-[#F1EFE9] dark:bg-[#282521] p-5 space-y-2 text-xs">
+                <div className="rounded-md border border-[#E8E5DF] dark:border-[#332F2A] bg-[#F1EFE9] dark:bg-[#282521] p-5 space-y-2 text-xs">
                   <p className="font-medium text-[#252525] dark:text-[#EAE6DF]">
                     Sandbox Preview Testing Only
                   </p>
@@ -790,7 +850,9 @@ export function DashboardPage() {
                     onClick={() => void toggleSandboxAdmin(!profile.isAdmin)}
                     className="rounded-md border border-[#80545A] text-[#80545A] dark:border-[#B8838A] dark:text-[#B8838A] px-3 py-1.5 font-medium"
                   >
-                    {profile.isAdmin ? 'Disable Sandbox Moderator Role' : 'Enable Sandbox Moderator Role'}
+                    {profile.isAdmin
+                      ? 'Disable Sandbox Moderator Role'
+                      : 'Enable Sandbox Moderator Role'}
                   </button>
                 </div>
               )}

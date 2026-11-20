@@ -6,7 +6,7 @@ import { useAuth } from '../context/AuthContext.tsx';
 import { LetterCard } from '../components/LetterCard.tsx';
 
 export function OpenLetterboxPage() {
-  const { token } = useAuth();
+  const { config, token } = useAuth();
   const [letters, setLetters] = useState<PublicLetterDTO[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -35,34 +35,43 @@ export function OpenLetterboxPage() {
   }, [token]);
 
   return (
-    <div className="max-w-5xl mx-auto px-4 sm:px-6 py-10 sm:py-14">
-      <div className="pb-8 border-b border-[#E8E5DF] dark:border-[#332F2A] space-y-2">
-        <p className="text-xs uppercase tracking-widest text-[#80545A] dark:text-[#B8838A] font-medium">
+    <div>
+      <div className="px-4 sm:px-6 py-6 border-b border-[#E8E5DF] dark:border-[#332F2A] space-y-1.5">
+        <p className="text-[11px] uppercase tracking-widest text-[#80545A] dark:text-[#B8838A] font-medium">
           Thoughtful Discovery
         </p>
-        <h1 className="font-editorial text-3xl sm:text-4xl font-semibold">Open Letterbox</h1>
-        <p className="text-sm sm:text-base text-[#77736D] dark:text-[#A19B92] max-w-2xl leading-relaxed">
+        <h1 className="font-editorial text-2xl sm:text-3xl font-semibold">Open Letterbox</h1>
+        <p className="text-xs sm:text-sm text-[#77736D] dark:text-[#A19B92] max-w-xl leading-relaxed">
           Public letters that have received few or no replies yet and could welcome a kind,
-          considered response. Letters are surfaced to encourage connection, never ranked by
-          popularity.
+          considered response. Never ranked by popularity.
         </p>
       </div>
 
-      <div className="mt-8">
+      <div>
         {loading ? (
-          <div className="space-y-4">
+          <div className="divide-y divide-[#E8E5DF] dark:divide-[#332F2A]">
             {[1, 2].map((n) => (
-              <div
-                key={n}
-                className="h-44 rounded-lg border border-[#E8E5DF] dark:border-[#332F2A] bg-[#FFFFFF] dark:bg-[#201E1B] animate-pulse"
-              />
+              <div key={n} className="px-4 sm:px-6 py-6 space-y-3 animate-pulse">
+                <div className="h-3 w-36 bg-[#F1EFE9] dark:bg-[#282521] rounded" />
+                <div className="h-6 w-2/3 bg-[#F1EFE9] dark:bg-[#282521] rounded" />
+                <div className="h-16 w-full bg-[#F1EFE9] dark:bg-[#282521] rounded" />
+              </div>
             ))}
           </div>
         ) : error ? (
-          <p className="text-sm text-[#80545A] dark:text-[#B8838A]">{error}</p>
+          <div className="px-4 sm:px-6 py-10 space-y-3 text-sm">
+            <p className="text-[#80545A] dark:text-[#B8838A]">{error}</p>
+            {config?.supabaseSchemaReady === false && (
+              <Link to="/setup" className="underline text-[#80545A] dark:text-[#B8838A]">
+                Open Setup &amp; Status
+              </Link>
+            )}
+          </div>
         ) : letters.length === 0 ? (
-          <div className="rounded-lg border border-[#E8E5DF] dark:border-[#332F2A] bg-[#FFFFFF] dark:bg-[#201E1B] p-10 text-center space-y-3">
-            <h2 className="font-editorial text-2xl font-semibold">Every open letter has been answered</h2>
+          <div className="px-4 sm:px-6 py-14 text-center space-y-3">
+            <h2 className="font-editorial text-2xl font-semibold">
+              Every open letter has been answered
+            </h2>
             <p className="text-sm text-[#77736D] dark:text-[#A19B92] max-w-md mx-auto">
               Check back soon or browse all public letters in Explore.
             </p>
@@ -74,9 +83,18 @@ export function OpenLetterboxPage() {
             </Link>
           </div>
         ) : (
-          <div className="space-y-5">
+          <div>
             {letters.map((letter) => (
-              <LetterCard key={letter.id} letter={letter} />
+              <LetterCard
+                key={letter.id}
+                letter={letter}
+                onUpdated={(updated) =>
+                  setLetters((prev) => prev.map((item) => (item.id === updated.id ? updated : item)))
+                }
+                onBlockedAuthor={(id) =>
+                  setLetters((prev) => prev.filter((item) => item.id !== id))
+                }
+              />
             ))}
           </div>
         )}

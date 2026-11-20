@@ -103,11 +103,12 @@ export function ExplorePage() {
   };
 
   return (
-    <div className="max-w-5xl mx-auto px-4 sm:px-6 py-10 sm:py-14">
-      <div className="flex flex-col sm:flex-row sm:items-end justify-between gap-4 pb-8 border-b border-[#E8E5DF] dark:border-[#332F2A]">
+    <div>
+      {/* Header */}
+      <div className="px-4 sm:px-6 py-5 border-b border-[#E8E5DF] dark:border-[#332F2A] flex items-center justify-between gap-4">
         <div>
-          <h1 className="font-editorial text-3xl sm:text-4xl font-semibold">Explore Letters</h1>
-          <p className="text-sm text-[#77736D] dark:text-[#A19B92] mt-1.5">
+          <h1 className="font-editorial text-2xl sm:text-3xl font-semibold">Explore Letters</h1>
+          <p className="text-xs text-[#77736D] dark:text-[#A19B92] mt-0.5">
             Discover public letters shared anonymously by strangers.
           </p>
         </div>
@@ -115,15 +116,15 @@ export function ExplorePage() {
           type="button"
           onClick={handleSurpriseMe}
           disabled={surprising}
-          className="inline-flex items-center justify-center gap-2 rounded-md border border-[#E8E5DF] dark:border-[#332F2A] bg-[#FFFFFF] dark:bg-[#201E1B] hover:border-[#80545A] px-4 py-2.5 text-sm font-medium transition-colors whitespace-nowrap shrink-0"
+          className="inline-flex items-center gap-1.5 rounded-md border border-[#E8E5DF] dark:border-[#332F2A] bg-[#FFFFFF] dark:bg-[#201E1B] hover:border-[#80545A] px-3.5 py-2 text-xs font-medium transition-colors whitespace-nowrap shrink-0"
         >
-          <Shuffle className="w-4 h-4 text-[#80545A] dark:text-[#B8838A]" />
+          <Shuffle className="w-3.5 h-3.5 text-[#80545A] dark:text-[#B8838A]" />
           {surprising ? 'Choosing…' : 'Surprise Me'}
         </button>
       </div>
 
-      {/* Search & Category Filters */}
-      <div className="mt-6 space-y-4">
+      {/* Search Bar */}
+      <div className="px-4 sm:px-6 py-4 border-b border-[#E8E5DF] dark:border-[#332F2A] bg-[#FFFFFF]/50 dark:bg-[#201E1B]/50">
         <form onSubmit={handleSearchSubmit} className="flex gap-2">
           <div className="relative flex-1">
             <Search className="w-4 h-4 text-[#77736D] dark:text-[#A19B92] absolute left-3.5 top-1/2 -translate-y-1/2 pointer-events-none" />
@@ -133,57 +134,58 @@ export function ExplorePage() {
               onChange={(e) => setSearchInput(e.target.value)}
               placeholder="Search public letters by topic, feeling, or keyword…"
               aria-label="Search public letters"
-              className="w-full rounded-md border border-[#E8E5DF] dark:border-[#332F2A] bg-[#FFFFFF] dark:bg-[#201E1B] pl-10 pr-4 py-2.5 text-sm"
+              className="w-full rounded-md border border-[#E8E5DF] dark:border-[#332F2A] bg-[#FFFFFF] dark:bg-[#181715] pl-10 pr-4 py-2 text-sm"
             />
           </div>
           <button
             type="submit"
-            className="rounded-md bg-[#80545A] hover:bg-[#6C454A] text-white px-5 py-2.5 text-sm font-medium transition-colors whitespace-nowrap shrink-0"
+            className="rounded-md bg-[#80545A] hover:bg-[#6C454A] text-white px-4 py-2 text-sm font-medium transition-colors whitespace-nowrap shrink-0"
           >
             Search
           </button>
         </form>
+      </div>
 
-        <div
-          className="flex flex-wrap items-center gap-1.5 p-1 rounded-lg bg-[#F1EFE9] dark:bg-[#282521]"
-          role="tablist"
-          aria-label="Filter letters by category"
+      {/* Category Filter Tabs */}
+      <div
+        className="border-b border-[#E8E5DF] dark:border-[#332F2A] px-4 sm:px-6 overflow-x-auto scrollbar-none flex items-center gap-5"
+        role="tablist"
+        aria-label="Filter letters by category"
+      >
+        <button
+          type="button"
+          role="tab"
+          aria-selected={activeCategory === 'all'}
+          onClick={() => handleCategoryChange('all')}
+          className={`py-3 text-xs font-medium whitespace-nowrap shrink-0 border-b-2 transition-colors ${
+            activeCategory === 'all'
+              ? 'border-[#80545A] dark:border-[#B8838A] text-[#252525] dark:text-[#EAE6DF]'
+              : 'border-transparent text-[#77736D] dark:text-[#A19B92] hover:text-[#252525] dark:hover:text-[#EAE6DF]'
+          }`}
         >
+          All Categories
+        </button>
+        {categories.map((cat) => (
           <button
+            key={cat.id}
             type="button"
             role="tab"
-            aria-selected={activeCategory === 'all'}
-            onClick={() => handleCategoryChange('all')}
-            className={`px-3 py-1.5 text-xs font-medium rounded-md transition-colors whitespace-nowrap shrink-0 ${
-              activeCategory === 'all'
-                ? 'bg-[#FFFFFF] dark:bg-[#201E1B] text-[#252525] dark:text-[#EAE6DF] shadow-xs'
-                : 'text-[#77736D] dark:text-[#A19B92] hover:text-[#252525] dark:hover:text-[#EAE6DF]'
+            aria-selected={activeCategory === cat.slug}
+            onClick={() => handleCategoryChange(cat.slug)}
+            className={`py-3 text-xs font-medium whitespace-nowrap shrink-0 border-b-2 transition-colors ${
+              activeCategory === cat.slug
+                ? 'border-[#80545A] dark:border-[#B8838A] text-[#252525] dark:text-[#EAE6DF]'
+                : 'border-transparent text-[#77736D] dark:text-[#A19B92] hover:text-[#252525] dark:hover:text-[#EAE6DF]'
             }`}
           >
-            All Categories
+            {cat.name}
           </button>
-          {categories.map((cat) => (
-            <button
-              key={cat.id}
-              type="button"
-              role="tab"
-              aria-selected={activeCategory === cat.slug}
-              onClick={() => handleCategoryChange(cat.slug)}
-              className={`px-3 py-1.5 text-xs font-medium rounded-md transition-colors whitespace-nowrap shrink-0 ${
-                activeCategory === cat.slug
-                  ? 'bg-[#FFFFFF] dark:bg-[#201E1B] text-[#252525] dark:text-[#EAE6DF] shadow-xs'
-                  : 'text-[#77736D] dark:text-[#A19B92] hover:text-[#252525] dark:hover:text-[#EAE6DF]'
-              }`}
-            >
-              {cat.name}
-            </button>
-          ))}
-        </div>
+        ))}
       </div>
 
       {/* Results Count */}
       {!loading && !error && (
-        <div className="mt-6 flex items-center justify-between text-xs text-[#77736D] dark:text-[#A19B92] tabular-nums">
+        <div className="px-4 sm:px-6 py-2.5 border-b border-[#E8E5DF] dark:border-[#332F2A] flex items-center justify-between text-xs text-[#77736D] dark:text-[#A19B92] tabular-nums bg-[#F1EFE9]/30 dark:bg-[#201E1B]/30">
           <span>
             {total} {total === 1 ? 'public letter' : 'public letters'}
             {urlQuery ? ` matching “${urlQuery}”` : ''}
@@ -203,19 +205,20 @@ export function ExplorePage() {
         </div>
       )}
 
-      {/* Feed States */}
-      <div className="mt-6">
+      {/* Timeline Feed */}
+      <div>
         {loading ? (
-          <div className="space-y-4">
+          <div className="divide-y divide-[#E8E5DF] dark:divide-[#332F2A]">
             {[1, 2, 3].map((n) => (
-              <div
-                key={n}
-                className="h-44 rounded-lg border border-[#E8E5DF] dark:border-[#332F2A] bg-[#FFFFFF] dark:bg-[#201E1B] animate-pulse"
-              />
+              <div key={n} className="px-4 sm:px-6 py-6 space-y-3 animate-pulse">
+                <div className="h-3 w-36 bg-[#F1EFE9] dark:bg-[#282521] rounded" />
+                <div className="h-6 w-2/3 bg-[#F1EFE9] dark:bg-[#282521] rounded" />
+                <div className="h-16 w-full bg-[#F1EFE9] dark:bg-[#282521] rounded" />
+              </div>
             ))}
           </div>
         ) : error ? (
-          <div className="rounded-lg border border-[#E8E5DF] dark:border-[#332F2A] bg-[#FFFFFF] dark:bg-[#201E1B] p-6 text-sm space-y-3">
+          <div className="px-4 sm:px-6 py-10 text-sm space-y-3">
             <p className="text-[#80545A] dark:text-[#B8838A]">{error}</p>
             <div className="flex flex-wrap items-center gap-4">
               <button
@@ -233,7 +236,7 @@ export function ExplorePage() {
             </div>
           </div>
         ) : letters.length === 0 ? (
-          <div className="rounded-lg border border-[#E8E5DF] dark:border-[#332F2A] bg-[#FFFFFF] dark:bg-[#201E1B] p-10 text-center space-y-3">
+          <div className="px-4 sm:px-6 py-14 text-center space-y-3">
             <h2 className="font-editorial text-2xl font-semibold">No letters found</h2>
             <p className="text-sm text-[#77736D] dark:text-[#A19B92] max-w-md mx-auto">
               {urlQuery || activeCategory !== 'all'
@@ -250,12 +253,21 @@ export function ExplorePage() {
             </div>
           </div>
         ) : (
-          <div className="space-y-5">
+          <div>
             {letters.map((letter) => (
-              <LetterCard key={letter.id} letter={letter} />
+              <LetterCard
+                key={letter.id}
+                letter={letter}
+                onUpdated={(updated) =>
+                  setLetters((prev) => prev.map((item) => (item.id === updated.id ? updated : item)))
+                }
+                onBlockedAuthor={(id) =>
+                  setLetters((prev) => prev.filter((item) => item.id !== id))
+                }
+              />
             ))}
             {hasMore && (
-              <div className="pt-4 text-center">
+              <div className="px-4 sm:px-6 py-6 text-center">
                 <button
                   type="button"
                   onClick={() => void fetchFeed(page + 1, true)}

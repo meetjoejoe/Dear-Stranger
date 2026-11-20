@@ -77,8 +77,8 @@ export function ModerationPage() {
 
   if (!token || !profile?.isAdmin) {
     return (
-      <div className="max-w-3xl mx-auto px-4 sm:px-6 py-16">
-        <div className="rounded-lg border border-[#E8E5DF] dark:border-[#332F2A] bg-[#FFFFFF] dark:bg-[#201E1B] p-8 text-center space-y-3">
+      <div className="px-4 sm:px-6 py-14">
+        <div className="rounded-md border border-[#E8E5DF] dark:border-[#332F2A] bg-[#FFFFFF] dark:bg-[#201E1B] p-8 text-center space-y-3">
           <h1 className="font-editorial text-3xl font-semibold">Restricted Access</h1>
           <p className="text-sm text-[#77736D] dark:text-[#A19B92]">
             This moderation console requires server-verified administrator or moderator authorization.
@@ -199,9 +199,9 @@ export function ModerationPage() {
   };
 
   return (
-    <div className="max-w-6xl mx-auto px-4 sm:px-6 py-10 sm:py-14 space-y-10">
+    <div className="px-4 sm:px-6 py-8 sm:py-10 space-y-10">
       <div className="pb-6 border-b border-[#E8E5DF] dark:border-[#332F2A]">
-        <p className="text-xs uppercase tracking-widest text-[#80545A] dark:text-[#B8838A] font-medium">
+        <p className="text-[11px] uppercase tracking-widest text-[#80545A] dark:text-[#B8838A] font-medium">
           Server-Verified Moderator Access ({profile.adminRole})
         </p>
         <h1 className="font-editorial text-3xl sm:text-4xl font-semibold mt-1">
@@ -210,7 +210,7 @@ export function ModerationPage() {
       </div>
 
       {loading ? (
-        <div className="h-64 rounded-lg border border-[#E8E5DF] dark:border-[#332F2A] bg-[#FFFFFF] dark:bg-[#201E1B] animate-pulse" />
+        <div className="h-64 rounded-md border border-[#E8E5DF] dark:border-[#332F2A] bg-[#FFFFFF] dark:bg-[#201E1B] animate-pulse" />
       ) : error || !data ? (
         <p className="text-sm text-[#80545A]">{error}</p>
       ) : (
@@ -218,7 +218,7 @@ export function ModerationPage() {
           {/* Aggregate Non-PII Metrics */}
           <section className="space-y-3">
             <h2 className="font-editorial text-2xl font-semibold">Aggregate Platform Activity</h2>
-            <div className="grid grid-cols-2 sm:grid-cols-4 lg:grid-cols-7 gap-3">
+            <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
               {(
                 [
                   ['Letters', data.metrics.letterSubmitted],
@@ -232,7 +232,7 @@ export function ModerationPage() {
               ).map(([label, val]) => (
                 <div
                   key={label}
-                  className="rounded-lg border border-[#E8E5DF] dark:border-[#332F2A] bg-[#FFFFFF] dark:bg-[#201E1B] p-4"
+                  className="rounded-md border border-[#E8E5DF] dark:border-[#332F2A] bg-[#FFFFFF] dark:bg-[#201E1B] p-4"
                 >
                   <p className="text-xs text-[#77736D] dark:text-[#A19B92]">{label}</p>
                   <p className="text-2xl font-editorial font-semibold mt-1 tabular-nums">{val}</p>

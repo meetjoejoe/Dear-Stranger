@@ -36,16 +36,16 @@ export function SetupPage() {
   };
 
   return (
-    <div className="max-w-3xl mx-auto px-4 sm:px-6 py-12 sm:py-16 space-y-8">
+    <div className="px-4 sm:px-6 py-8 sm:py-10 space-y-8">
       <div className="pb-6 border-b border-[#E8E5DF] dark:border-[#332F2A]">
-        <p className="text-xs uppercase tracking-widest text-[#80545A] dark:text-[#B8838A] font-medium">
+        <p className="text-[11px] uppercase tracking-widest text-[#80545A] dark:text-[#B8838A] font-medium">
           Environment &amp; Integration Status
         </p>
-        <h1 className="font-editorial text-4xl font-semibold mt-1">Platform Setup</h1>
+        <h1 className="font-editorial text-3xl sm:text-4xl font-semibold mt-1">Platform Setup</h1>
       </div>
 
       {/* Live Status Summary */}
-      <div className="rounded-lg border border-[#E8E5DF] dark:border-[#332F2A] bg-[#FFFFFF] dark:bg-[#201E1B] p-6 space-y-4">
+      <div className="rounded-md border border-[#E8E5DF] dark:border-[#332F2A] bg-[#FFFFFF] dark:bg-[#201E1B] p-5 sm:p-6 space-y-4">
         <h2 className="font-editorial text-2xl font-semibold">Live Configuration Check</h2>
         <dl className="divide-y divide-[#E8E5DF] dark:divide-[#332F2A] text-sm">
           <div className="py-2.5 flex flex-col sm:flex-row sm:justify-between gap-1 sm:gap-4">
@@ -79,7 +79,7 @@ export function SetupPage() {
 
       {/* Sandbox Controls when unconfigured */}
       {config && !config.supabaseConfigured && (
-        <div className="rounded-lg border border-[#E8E5DF] dark:border-[#332F2A] bg-[#F1EFE9] dark:bg-[#282521] p-6 space-y-4">
+        <div className="rounded-md border border-[#E8E5DF] dark:border-[#332F2A] bg-[#F1EFE9] dark:bg-[#282521] p-5 sm:p-6 space-y-4">
           <h2 className="font-editorial text-2xl font-semibold">Sandbox Preview Controls</h2>
           <p className="text-sm text-[#77736D] dark:text-[#A19B92] leading-relaxed">
             Until Supabase credentials are supplied, Dear Stranger runs in an ephemeral in-memory
@@ -114,7 +114,7 @@ export function SetupPage() {
       )}
 
       {/* Connection Steps */}
-      <div className="rounded-lg border border-[#E8E5DF] dark:border-[#332F2A] bg-[#FFFFFF] dark:bg-[#201E1B] p-6 space-y-4 text-sm leading-relaxed overflow-hidden">
+      <div className="rounded-md border border-[#E8E5DF] dark:border-[#332F2A] bg-[#FFFFFF] dark:bg-[#201E1B] p-5 sm:p-6 space-y-4 text-sm leading-relaxed overflow-hidden">
         <h2 className="font-editorial text-2xl font-semibold">Connecting Live Supabase</h2>
         <ol className="list-decimal pl-5 space-y-2 text-[#77736D] dark:text-[#A19B92] break-words">
           <li>Create a Supabase project and enable <strong>Anonymous Sign-Ins</strong> under Authentication &rarr; Providers.</li>
