@@ -11,12 +11,11 @@ import { apiFetch } from '../lib/api.ts';
 import { useAuth } from '../context/AuthContext.tsx';
 import { useToast } from '../context/ToastContext.tsx';
 import { SafetySupportBanner } from '../components/SafetySupportBanner.tsx';
-import { TurnstileWidget } from '../components/TurnstileWidget.tsx';
 
 const LOCAL_DRAFT_KEY = 'ds_local_letter_draft';
 
 export function WriteLetterPage() {
-  const { config, categories, token, profile, openAuthPrompt } = useAuth();
+  const { categories, token, profile, openAuthPrompt } = useAuth();
   const { showToast } = useToast();
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
@@ -31,8 +30,6 @@ export function WriteLetterPage() {
   const [submitting, setSubmitting] = useState(false);
   const [loadingEdit, setLoadingEdit] = useState(Boolean(editId));
   const [error, setError] = useState<string | null>(null);
-  const [turnstileToken, setTurnstileToken] = useState('');
-  const [turnstileResetKey, setTurnstileResetKey] = useState(0);
 
   useEffect(() => {
     if (!categoryId && categories.length > 0) {
@@ -108,8 +105,6 @@ export function WriteLetterPage() {
   const trimmedLength = body.trim().length;
   const safetyPreview = screenContentForSafety(`${title}\n${body}`);
 
-  const requiresTurnstile = !editId && Boolean(config?.turnstileSiteKey);
-
   const validateForPublish = (): boolean => {
     setError(null);
     if (!categoryId) {
@@ -124,10 +119,6 @@ export function WriteLetterPage() {
       setError(`Your letter cannot exceed ${MAX_LETTER_LENGTH} characters.`);
       return false;
     }
-    if (requiresTurnstile && !turnstileToken) {
-      setError('Please complete the security check before submitting.');
-      return false;
-    }
     return true;
   };
 
@@ -138,10 +129,6 @@ export function WriteLetterPage() {
     }
     if (targetStatus === 'published' && !validateForPublish()) {
       setConfirmOpen(false);
-      return;
-    }
-    if (targetStatus === 'draft' && requiresTurnstile && !turnstileToken) {
-      setError('Please complete the security check before saving your draft.');
       return;
     }
 
@@ -155,7 +142,6 @@ export function WriteLetterPage() {
         visibility,
         status: targetStatus,
         allowExternalSharing,
-        ...(!editId && turnstileToken ? { turnstileToken } : {}),
       };
 
       if (editId) {
@@ -194,10 +180,6 @@ export function WriteLetterPage() {
         }
       }
     } catch (err) {
-      if (!editId && config?.turnstileSiteKey) {
-        setTurnstileToken('');
-        setTurnstileResetKey((k) => k + 1);
-      }
       setError(err instanceof Error ? err.message : 'Could not submit letter.');
       setConfirmOpen(false);
     } finally {
@@ -320,17 +302,6 @@ export function WriteLetterPage() {
             Allow Share Studio cards and external social sharing for this letter.
           </span>
         </label>
-
-        {requiresTurnstile && config?.turnstileSiteKey && (
-          <div className="space-y-1">
-            <p className="text-xs text-[#77736D] dark:text-[#A19B92]">Security check</p>
-            <TurnstileWidget
-              siteKey={config.turnstileSiteKey}
-              resetKey={turnstileResetKey}
-              onTokenChange={setTurnstileToken}
-            />
-          </div>
-        )}
 
         {error && (
           <p role="alert" className="text-sm text-[#80545A] dark:text-[#B8838A]">

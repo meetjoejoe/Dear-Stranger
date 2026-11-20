@@ -201,6 +201,9 @@ export function Layout({ children }: { children: React.ReactNode }) {
                 Signed in anonymously as <strong className="font-medium text-[#252525] dark:text-[#EAE6DF]">{profile.displayName}</strong>
               </p>
             )}
+            <p className="text-xs text-[#77736D] dark:text-[#A19B92]">
+              &copy; {new Date().getFullYear()} Awesome Studios. All rights reserved.
+            </p>
           </div>
 
           <div className="flex flex-wrap items-center gap-x-6 gap-y-2 text-xs sm:text-sm text-[#77736D] dark:text-[#A19B92]">

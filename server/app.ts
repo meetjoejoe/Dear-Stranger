@@ -1,6 +1,6 @@
 import express, { type NextFunction, type Request, type Response } from 'express';
 import helmet from 'helmet';
-import { getServerConfig, isSupabaseConfigured, verifyTurnstileToken } from './config.ts';
+import { getServerConfig, isSupabaseConfigured } from './config.ts';
 import {
   AppError,
   blockAuthorByLetterOrReply,
@@ -317,11 +317,6 @@ export async function createApiApp() {
     asyncHandler(async (req, res) => {
       const auth = await attachAuth(req);
       enforceRateLimit(req, auth?.userId || null, 'create_letter', 10, 60 * 60 * 1000);
-
-      const captchaOk = await verifyTurnstileToken(req.body?.turnstileToken, hashRequestActor(req, auth?.userId));
-      if (!captchaOk) {
-        throw new AppError(400, 'Please complete the security check before submitting.');
-      }
 
       const actorKey = hashRequestActor(req, auth?.userId);
       if (req.body?.status !== 'draft' && typeof req.body?.body === 'string') {
