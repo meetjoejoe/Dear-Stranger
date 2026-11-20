@@ -264,12 +264,7 @@ export function ShareStudioModal({ open, onClose, letter }: ShareStudioModalProp
 
       ctx.fillStyle = palette.muted;
       ctx.font = 'italic 400 26px "Cormorant Garamond", Georgia, serif';
-      ctx.fillText('Some things are easier to tell a stranger.', contentX, footerY + 14);
-
-      ctx.font = '400 18px "Plus Jakarta Sans", sans-serif';
-      const shortUrl = shareUrl.replace(/^https?:\/\//, '');
-      const displayUrl = shortUrl.length > 52 ? `${shortUrl.slice(0, 52)}…` : shortUrl;
-      ctx.fillText(displayUrl, contentX, footerY + 48);
+      ctx.fillText('Some things are easier to tell a stranger.', contentX, footerY + 34);
 
       if (includeQr) {
         const qrDataUrl = await QRCode.toDataURL(shareUrl, {
