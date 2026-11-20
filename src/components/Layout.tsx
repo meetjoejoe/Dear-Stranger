@@ -7,6 +7,8 @@ import type { PublicLetterDTO } from '../shared/types.ts';
 import { useToast } from '../context/ToastContext.tsx';
 import { BrandWordmark } from './Logo.tsx';
 import { AuthPromptModal } from './AuthPromptModal.tsx';
+import { PWAInstallButton } from './PWAInstallButton.tsx';
+import { OfflineIndicator } from './OfflineIndicator.tsx';
 
 export function Layout({ children }: { children: React.ReactNode }) {
   const { config, profile, theme, toggleTheme, unreadCount, token } = useAuth();
@@ -128,8 +130,9 @@ export function Layout({ children }: { children: React.ReactNode }) {
             </NavLink>
           </nav>
 
-          {/* Zone 3: Single Primary Action (+ mobile menu trigger) */}
-          <div className="flex items-center gap-3 shrink-0">
+          {/* Zone 3: Single Primary Action (+ install & mobile menu trigger) */}
+          <div className="flex items-center gap-2.5 shrink-0">
+            <PWAInstallButton className="hidden sm:inline-flex" />
             <Link
               to="/write"
               className="hidden sm:inline-flex items-center justify-center rounded-md bg-[#80545A] hover:bg-[#6C454A] text-white px-4 py-2 text-sm font-medium transition-colors whitespace-nowrap shrink-0"
@@ -180,6 +183,10 @@ export function Layout({ children }: { children: React.ReactNode }) {
               <Link to="/guidelines" onClick={() => setMobileMenuOpen(false)} className="py-1.5">
                 Community Guidelines
               </Link>
+              <PWAInstallButton
+                className="w-full justify-center mt-1"
+                onAction={() => setMobileMenuOpen(false)}
+              />
             </div>
           </nav>
         )}
@@ -235,6 +242,7 @@ export function Layout({ children }: { children: React.ReactNode }) {
       </footer>
 
       <AuthPromptModal />
+      <OfflineIndicator />
     </div>
   );
 }
