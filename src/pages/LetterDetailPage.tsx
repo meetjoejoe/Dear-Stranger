@@ -3,6 +3,7 @@ import { Link, useNavigate, useParams } from 'react-router-dom';
 import { Bookmark, Flag, Lock, Share2 } from 'lucide-react';
 import {
   MAX_REPLY_LENGTH,
+  REACTION_EMOJIS,
   REACTION_LABELS,
   REACTION_TYPES,
   type PublicLetterDTO,
@@ -283,14 +284,18 @@ export function LetterDetailPage() {
                   type="button"
                   onClick={() => void handleReaction(rt)}
                   aria-pressed={active}
-                  className={`px-3 py-1.5 rounded-md border text-xs transition-colors ${
+                  aria-label={`${REACTION_LABELS[rt]}${count > 0 ? ` (${count})` : ''}`}
+                  title={REACTION_LABELS[rt]}
+                  className={`inline-flex items-center gap-1.5 px-2.5 py-1.5 rounded-md border text-xs transition-colors ${
                     active
                       ? 'border-[#80545A] dark:border-[#B8838A] bg-[#80545A]/10 dark:bg-[#B8838A]/15 text-[#80545A] dark:text-[#B8838A] font-medium'
-                      : 'border-[#E8E5DF] dark:border-[#332F2A] text-[#77736D] dark:text-[#A19B92] hover:text-[#252525] dark:hover:text-[#EAE6DF]'
+                      : 'border-[#E8E5DF] dark:border-[#332F2A] text-[#77736D] dark:text-[#A19B92] hover:text-[#252525] dark:hover:text-[#EAE6DF] hover:border-[#80545A]/50'
                   }`}
                 >
-                  {REACTION_LABELS[rt]}
-                  {count > 0 && <span className="ml-1.5 tabular-nums opacity-80">{count}</span>}
+                  <span aria-hidden="true" className="text-base leading-none">
+                    {REACTION_EMOJIS[rt]}
+                  </span>
+                  {count > 0 && <span className="tabular-nums opacity-85">{count}</span>}
                 </button>
               );
             })}

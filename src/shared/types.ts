@@ -14,12 +14,20 @@ export const REACTION_TYPES = [
 
 export type ReactionType = (typeof REACTION_TYPES)[number];
 
+export const REACTION_EMOJIS: Record<ReactionType, string> = {
+  i_hear_you: '👍',
+  sending_strength: '🫂',
+  i_understand: '🤍',
+  made_me_smile: '🥹',
+  thank_you: '🙏',
+};
+
 export const REACTION_LABELS: Record<ReactionType, string> = {
-  i_hear_you: 'I hear you.',
-  sending_strength: 'Sending strength.',
-  i_understand: 'I understand.',
-  made_me_smile: 'This made me smile.',
-  thank_you: 'Thank you for sharing.',
+  i_hear_you: 'Like — I hear you',
+  sending_strength: 'Sending strength',
+  i_understand: 'Warm empathy',
+  made_me_smile: 'Touched / made me smile',
+  thank_you: 'Thank you for sharing',
 };
 
 export const REPORT_REASONS = [
