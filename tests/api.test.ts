@@ -6,7 +6,13 @@ import { createApp } from '../server.ts';
 import { injectLetterOpenGraph } from '../server/ogMeta.ts';
 import { resetRateLimitsForTest } from '../server/rateLimit.ts';
 import { sandboxStore } from '../server/sandboxStore.ts';
+import { deriveAuthProvidersFromSupabaseUser } from '../server/dataService.ts';
 import { screenContentForSafety } from '../src/shared/validation.ts';
+import {
+  classifyOAuthError,
+  extractOAuthParamsFromUrl,
+  sanitizeReturnPath,
+} from '../src/lib/oauthUtils.ts';
 
 let server: Server;
 let baseUrl = '';
@@ -497,5 +503,62 @@ describe('Dear Stranger API & Security Verification', () => {
     assert.equal(modData.status, 200);
     assert.ok(modData.data.reports.length >= 2);
     assert.ok(modData.data.reports.some((r) => (r.targetPreview || '').includes('Report and block check')));
+  });
+
+  it('derives non-PII Supabase auth provider flags cleanly for anonymous, Google, and linked sessions', () => {
+    const anonOnly = deriveAuthProvidersFromSupabaseUser({
+      is_anonymous: true,
+      email: null,
+      app_metadata: { provider: 'anonymous', providers: ['anonymous'] },
+      identities: [{ provider: 'anonymous' }],
+    });
+    assert.equal(anonOnly.isAnonymous, true);
+    assert.equal(anonOnly.googleLinked, false);
+    assert.deepEqual(anonOnly.authProviders, ['anonymous']);
+
+    const googleOnly = deriveAuthProvidersFromSupabaseUser({
+      is_anonymous: false,
+      email: 'private@example.com',
+      app_metadata: { provider: 'google', providers: ['google'] },
+      identities: [{ provider: 'google' }],
+    });
+    assert.equal(googleOnly.isAnonymous, false);
+    assert.equal(googleOnly.googleLinked, true);
+    assert.deepEqual(googleOnly.authProviders, ['google']);
+
+    const linkedAnonToGoogle = deriveAuthProvidersFromSupabaseUser({
+      is_anonymous: false,
+      email: 'private@example.com',
+      app_metadata: { providers: ['anonymous', 'google'] },
+      identities: [{ provider: 'anonymous' }, { provider: 'google' }],
+    });
+    assert.equal(linkedAnonToGoogle.isAnonymous, false);
+    assert.equal(linkedAnonToGoogle.googleLinked, true);
+    assert.deepEqual(linkedAnonToGoogle.authProviders, ['google', 'anonymous']);
+  });
+
+  it('prevents open redirects and classifies OAuth cancellation and linking conflicts safely', () => {
+    assert.equal(sanitizeReturnPath('/write'), '/write');
+    assert.equal(sanitizeReturnPath('/dashboard?tab=account'), '/dashboard?tab=account');
+    assert.equal(sanitizeReturnPath('https://evil.example/phish'), '/dashboard?tab=account');
+    assert.equal(sanitizeReturnPath('//evil.example/phish'), '/dashboard?tab=account');
+    assert.equal(sanitizeReturnPath('/\\evil.example'), '/dashboard?tab=account');
+    assert.equal(sanitizeReturnPath('/auth/callback?code=123'), '/dashboard?tab=account');
+
+    const cancelled = extractOAuthParamsFromUrl('?error=access_denied&error_description=User+cancelled', '');
+    assert.equal(cancelled.error, 'access_denied');
+    const classifiedCancel = classifyOAuthError(cancelled.error, cancelled.errorCode, cancelled.errorDescription, 'signin');
+    assert.equal(classifiedCancel.isCancelled, true);
+    assert.equal(classifiedCancel.isIdentityConflict, false);
+
+    const conflict = classifyOAuthError(
+      'server_error',
+      'identity_already_exists',
+      'Identity is already linked to another user',
+      'link'
+    );
+    assert.equal(conflict.isIdentityConflict, true);
+    assert.equal(conflict.isCancelled, false);
+    assert.ok(conflict.message.includes('not modified'));
   });
 });

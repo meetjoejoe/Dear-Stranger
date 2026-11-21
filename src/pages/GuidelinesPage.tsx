@@ -3,20 +3,21 @@ import { SafetySupportBanner } from '../components/SafetySupportBanner.tsx';
 
 export function GuidelinesPage() {
   return (
-    <div className="px-4 sm:px-6 py-8 sm:py-10 space-y-8">
-      <div className="pb-6 border-b border-[#E8E5DF] dark:border-[#332F2A]">
-        <p className="text-[11px] uppercase tracking-widest text-[#80545A] dark:text-[#B8838A] font-medium">
+    <div>
+      <div className="sticky top-[52px] md:top-0 z-20 px-4 sm:px-6 py-4 border-b border-[#E8E5DF] dark:border-[#332F2A] bg-[#F8F7F3]/95 dark:bg-[#181715]/95 backdrop-blur-sm space-y-1">
+        <p className="text-[11px] font-medium text-[#80545A] dark:text-[#B8838A]">
           Community Standards
         </p>
-        <h1 className="font-editorial text-3xl sm:text-4xl font-semibold mt-1">
+        <h1 className="font-editorial text-2xl sm:text-3xl font-semibold leading-none">
           Community Guidelines
         </h1>
-        <p className="text-sm text-[#77736D] dark:text-[#A19B92] mt-2">
+        <p className="text-xs sm:text-sm text-[#77736D] dark:text-[#A19B92] pt-1">
           Dear Stranger exists for honest, respectful human conversation among adults aged 18+.
         </p>
       </div>
 
-      <SafetySupportBanner />
+      <div className="px-4 sm:px-6 py-6 space-y-6">
+        <SafetySupportBanner />
 
       <div className="space-y-6 text-[15px] leading-[1.78] text-[#252525] dark:text-[#EAE6DF] max-w-prose">
         <section className="space-y-2">
@@ -68,9 +69,10 @@ export function GuidelinesPage() {
           <p className="text-[#77736D] dark:text-[#A19B92]">
             You can report any letter, reply, or account, and block any anonymous author so their
             posts no longer appear for you. If your content or account is moderated, you may submit
-            an appeal from your Personal Dashboard for human review.
+            an appeal from your Profile under Safety &amp; Privacy.
           </p>
         </section>
+      </div>
       </div>
     </div>
   );

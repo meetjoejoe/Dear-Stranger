@@ -13,6 +13,7 @@ import { ModerationPage } from './pages/ModerationPage.tsx';
 import { GuidelinesPage } from './pages/GuidelinesPage.tsx';
 import { PrivacyPage } from './pages/PrivacyPage.tsx';
 import { SetupPage } from './pages/SetupPage.tsx';
+import { AuthCallbackPage } from './pages/AuthCallbackPage.tsx';
 
 export default function App() {
   return (
@@ -31,6 +32,7 @@ export default function App() {
               <Route path="/guidelines" element={<GuidelinesPage />} />
               <Route path="/privacy" element={<PrivacyPage />} />
               <Route path="/setup" element={<SetupPage />} />
+              <Route path="/auth/callback" element={<AuthCallbackPage />} />
               <Route path="*" element={<Navigate to="/" replace />} />
             </Routes>
           </Layout>

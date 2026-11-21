@@ -4,31 +4,42 @@ import {
   Bell,
   Bookmark,
   Compass,
-  FileText,
   Home,
   Inbox,
   Menu,
   Moon,
   PenLine,
+  Search,
   Settings,
   ShieldCheck,
   Shuffle,
   Sun,
-  UserCheck,
+  User,
   X,
 } from 'lucide-react';
 import { useAuth } from '../context/AuthContext.tsx';
 import { apiFetch } from '../lib/api.ts';
 import type { PublicLetterDTO } from '../shared/types.ts';
 import { useToast } from '../context/ToastContext.tsx';
-import { BrandWordmark } from './Logo.tsx';
+import { BrandWordmark, EnvelopeMark } from './Logo.tsx';
+import { AuthorAvatar } from './AuthorAvatar.tsx';
 import { AuthPromptModal } from './AuthPromptModal.tsx';
 import { PWAInstallButton } from './PWAInstallButton.tsx';
 import { OfflineIndicator } from './OfflineIndicator.tsx';
 import { RightSidebar } from './RightSidebar.tsx';
 
 export function Layout({ children }: { children: React.ReactNode }) {
-  const { config, profile, theme, toggleTheme, unreadCount, token, openAuthPrompt } = useAuth();
+  const {
+    config,
+    profile,
+    theme,
+    toggleTheme,
+    unreadCount,
+    token,
+    openAuthPrompt,
+    oauthError,
+    clearOAuthError,
+  } = useAuth();
   const { showToast } = useToast();
   const navigate = useNavigate();
   const location = useLocation();
@@ -50,7 +61,7 @@ export function Layout({ children }: { children: React.ReactNode }) {
         { token }
       );
       if (!res.letter) {
-        showToast('No public letters are available yet for Surprise Me.', 'info');
+        showToast('No public letters are available yet for random discovery.', 'info');
         return;
       }
       setRecentSurpriseIds((prev) => [...prev.slice(-15), res.letter!.id]);
@@ -64,17 +75,21 @@ export function Layout({ children }: { children: React.ReactNode }) {
   };
 
   const isNavItemActive = (path: string, tabMatch?: string): boolean => {
-    if (path === '/dashboard' && tabMatch) {
-      return location.pathname === '/dashboard' && activeDashboardTab === tabMatch;
+    if (path === '/dashboard') {
+      if (location.pathname !== '/dashboard') return false;
+      if (tabMatch === 'letters') {
+        return !['notifications', 'saved', 'account'].includes(activeDashboardTab);
+      }
+      return activeDashboardTab === tabMatch;
     }
     if (path === '/') return location.pathname === '/';
     return location.pathname.startsWith(path);
   };
 
   const sidebarItemClass = (active: boolean) =>
-    `flex items-center justify-between gap-3 px-3 py-2.5 rounded-md text-sm transition-colors whitespace-nowrap ${
+    `flex items-center justify-center lg:justify-between gap-3 px-2.5 lg:px-3.5 py-2.5 min-h-[42px] rounded-md text-sm transition-colors whitespace-nowrap ${
       active
-        ? 'bg-[#FFFFFF] dark:bg-[#201E1B] text-[#80545A] dark:text-[#B8838A] font-medium border border-[#E8E5DF] dark:border-[#332F2A]'
+        ? 'bg-[#FFFFFF] dark:bg-[#201E1B] text-[#80545A] dark:text-[#B8838A] font-semibold border border-[#E8E5DF] dark:border-[#332F2A]'
         : 'text-[#252525]/85 dark:text-[#EAE6DF]/85 hover:bg-[#F1EFE9] dark:hover:bg-[#201E1B] hover:text-[#252525] dark:hover:text-[#EAE6DF]'
     }`;
 
@@ -87,10 +102,10 @@ export function Layout({ children }: { children: React.ReactNode }) {
         </div>
       )}
 
-      {/* Unconfigured Supabase / Static Preview Honest Notice */}
+      {/* Honest Environment Mode Notice when Supabase is unconfigured / pending */}
       {config && !config.supabaseConfigured && (
         <div className="border-b border-[#E8E5DF] dark:border-[#332F2A] bg-[#F1EFE9] dark:bg-[#282521] px-4 py-2 text-xs text-[#77736D] dark:text-[#A19B92]">
-          <div className="max-w-[1260px] mx-auto flex flex-wrap items-center justify-between gap-2">
+          <div className="max-w-[1320px] mx-auto flex flex-wrap items-center justify-between gap-2">
             <span>
               {config.staticFallback ? (
                 <>
@@ -114,7 +129,7 @@ export function Layout({ children }: { children: React.ReactNode }) {
 
       {config?.supabaseConfigured && config.supabaseSchemaReady === false && (
         <div className="border-b border-[#E8E5DF] dark:border-[#332F2A] bg-[#F1EFE9] dark:bg-[#282521] px-4 py-2 text-xs text-[#77736D] dark:text-[#A19B92]">
-          <div className="max-w-[1260px] mx-auto flex flex-wrap items-center justify-between gap-2">
+          <div className="max-w-[1320px] mx-auto flex flex-wrap items-center justify-between gap-2">
             <span>
               <strong>Database Migrations Pending:</strong> Supabase is connected, but schema tables have not been initialized yet.
             </span>
@@ -128,14 +143,21 @@ export function Layout({ children }: { children: React.ReactNode }) {
         </div>
       )}
 
-      {/* Mobile Compact Top Header (< lg) */}
-      <header className="lg:hidden sticky top-0 z-40 h-[52px] border-b border-[#E8E5DF] dark:border-[#332F2A] bg-[#F8F7F3]/95 dark:bg-[#181715]/95 backdrop-blur-sm">
+      {/* Mobile Compact Top Header (< md) */}
+      <header className="md:hidden sticky top-0 z-40 h-[52px] border-b border-[#E8E5DF] dark:border-[#332F2A] bg-[#F8F7F3]/95 dark:bg-[#181715]/95 backdrop-blur-sm">
         <div className="h-full px-4 flex items-center justify-between gap-3">
           <Link to="/" className="focus:outline-none">
             <BrandWordmark />
           </Link>
 
-          <div className="flex items-center gap-1">
+          <div className="flex items-center gap-0.5">
+            <Link
+              to="/explore"
+              aria-label="Search letters"
+              className="min-h-[44px] min-w-[44px] inline-flex items-center justify-center rounded-md text-[#77736D] dark:text-[#A19B92] hover:text-[#252525] dark:hover:text-[#EAE6DF]"
+            >
+              <Search className="w-4 h-4" />
+            </Link>
             <button
               type="button"
               onClick={toggleTheme}
@@ -155,19 +177,24 @@ export function Layout({ children }: { children: React.ReactNode }) {
           </div>
         </div>
 
-        {/* Mobile Overflow Drawer */}
+        {/* Mobile Secondary Overflow Drawer */}
         {mobileMenuOpen && (
           <nav
             aria-label="Mobile secondary navigation"
-            className="border-b border-[#E8E5DF] dark:border-[#332F2A] bg-[#FFFFFF] dark:bg-[#201E1B] px-4 py-4 space-y-2 shadow-sm"
+            className="border-b border-[#E8E5DF] dark:border-[#332F2A] bg-[#FFFFFF] dark:bg-[#201E1B] px-4 py-4 space-y-3 shadow-sm"
           >
             {profile ? (
-              <p className="text-xs text-[#77736D] dark:text-[#A19B92] pb-2 border-b border-[#E8E5DF] dark:border-[#332F2A]">
-                Signed in anonymously as{' '}
-                <strong className="font-medium text-[#252525] dark:text-[#EAE6DF]">
-                  {profile.displayName}
-                </strong>
-              </p>
+              <div className="flex items-center gap-2.5 pb-2.5 border-b border-[#E8E5DF] dark:border-[#332F2A]">
+                <AuthorAvatar name={profile.displayName} size="sm" />
+                <div className="min-w-0">
+                  <p className="text-xs font-medium truncate text-[#252525] dark:text-[#EAE6DF]">
+                    {profile.displayName}
+                  </p>
+                  <p className="text-[11px] text-[#77736D] dark:text-[#A19B92]">
+                    Anonymous identity
+                  </p>
+                </div>
+              </div>
             ) : (
               <button
                 type="button"
@@ -177,57 +204,57 @@ export function Layout({ children }: { children: React.ReactNode }) {
                 }}
                 className="w-full text-left py-2 text-sm font-medium text-[#80545A] dark:text-[#B8838A]"
               >
-                Continue Anonymously &rarr;
+                Sign In / Continue Anonymously &rarr;
               </button>
             )}
 
-            <div className="grid grid-cols-2 gap-2 text-sm pt-1">
+            <div className="grid grid-cols-2 gap-1.5 text-sm">
               <Link
                 to="/open-letterbox"
                 onClick={() => setMobileMenuOpen(false)}
-                className="py-2 px-2 rounded hover:bg-[#F1EFE9] dark:hover:bg-[#282521]"
+                className="py-2.5 px-2.5 rounded-md hover:bg-[#F1EFE9] dark:hover:bg-[#282521]"
               >
-                Open Letterbox
+                Unanswered Letters
               </Link>
               <Link
                 to="/dashboard?tab=saved"
                 onClick={() => setMobileMenuOpen(false)}
-                className="py-2 px-2 rounded hover:bg-[#F1EFE9] dark:hover:bg-[#282521]"
+                className="py-2.5 px-2.5 rounded-md hover:bg-[#F1EFE9] dark:hover:bg-[#282521]"
               >
                 Saved Letters
               </Link>
               <Link
                 to="/dashboard?tab=account"
                 onClick={() => setMobileMenuOpen(false)}
-                className="py-2 px-2 rounded hover:bg-[#F1EFE9] dark:hover:bg-[#282521]"
+                className="py-2.5 px-2.5 rounded-md hover:bg-[#F1EFE9] dark:hover:bg-[#282521]"
               >
                 Settings
               </Link>
               <button
                 type="button"
                 onClick={handleSurpriseMe}
-                className="text-left py-2 px-2 rounded hover:bg-[#F1EFE9] dark:hover:bg-[#282521]"
+                className="text-left py-2.5 px-2.5 rounded-md hover:bg-[#F1EFE9] dark:hover:bg-[#282521]"
               >
-                Surprise Me
+                Random Letter
               </button>
               <Link
                 to="/guidelines"
                 onClick={() => setMobileMenuOpen(false)}
-                className="py-2 px-2 rounded hover:bg-[#F1EFE9] dark:hover:bg-[#282521]"
+                className="py-2.5 px-2.5 rounded-md hover:bg-[#F1EFE9] dark:hover:bg-[#282521]"
               >
                 Guidelines
               </Link>
               <Link
                 to="/privacy"
                 onClick={() => setMobileMenuOpen(false)}
-                className="py-2 px-2 rounded hover:bg-[#F1EFE9] dark:hover:bg-[#282521]"
+                className="py-2.5 px-2.5 rounded-md hover:bg-[#F1EFE9] dark:hover:bg-[#282521]"
               >
-                Privacy Policy
+                Privacy
               </Link>
               <Link
                 to="/setup"
                 onClick={() => setMobileMenuOpen(false)}
-                className="py-2 px-2 rounded hover:bg-[#F1EFE9] dark:hover:bg-[#282521]"
+                className="py-2.5 px-2.5 rounded-md hover:bg-[#F1EFE9] dark:hover:bg-[#282521]"
               >
                 Setup &amp; Status
               </Link>
@@ -235,173 +262,221 @@ export function Layout({ children }: { children: React.ReactNode }) {
                 <Link
                   to="/moderation"
                   onClick={() => setMobileMenuOpen(false)}
-                  className="py-2 px-2 rounded text-[#80545A] dark:text-[#B8838A] font-medium hover:bg-[#F1EFE9] dark:hover:bg-[#282521]"
+                  className="py-2.5 px-2.5 rounded-md text-[#80545A] dark:text-[#B8838A] font-medium hover:bg-[#F1EFE9] dark:hover:bg-[#282521]"
                 >
-                  Moderation Console
+                  Moderation
                 </Link>
               )}
             </div>
 
             <PWAInstallButton
-              className="w-full justify-center mt-2"
+              className="w-full justify-center"
               onAction={() => setMobileMenuOpen(false)}
             />
           </nav>
         )}
       </header>
 
-      {/* Three-Column Desktop Social Editorial Shell */}
-      <div className="flex-1 w-full max-w-[1260px] mx-auto flex justify-center">
-        {/* LEFT SIDEBAR (Desktop >= lg) */}
+      {/* Adaptive Tablet (2-col) & Desktop (3-col) Social Letter Network Shell */}
+      <div className="flex-1 w-full max-w-[1320px] mx-auto flex justify-center">
+        {/* LEFT SIDEBAR: Compact rail on Tablet (md), Full rail on Desktop (lg+) */}
         <aside
           aria-label="Primary navigation"
-          className="hidden lg:flex flex-col w-60 xl:w-64 shrink-0 sticky top-0 h-screen justify-between px-4 py-6 overflow-y-auto"
+          className="hidden md:flex flex-col w-[72px] lg:w-60 xl:w-64 shrink-0 sticky top-0 h-screen justify-between px-2.5 lg:px-4 py-5 overflow-y-auto"
         >
-          <div className="space-y-6">
-            <Link to="/" className="block px-2 focus:outline-none">
-              <BrandWordmark />
+          <div className="space-y-5">
+            <Link
+              to="/"
+              aria-label="Dear Stranger Home"
+              className="flex items-center justify-center lg:justify-start lg:px-2 py-1 focus:outline-none"
+            >
+              <span className="lg:hidden">
+                <EnvelopeMark className="w-7 h-6 text-[#80545A] dark:text-[#B8838A]" />
+              </span>
+              <span className="hidden lg:inline-flex">
+                <BrandWordmark />
+              </span>
             </Link>
 
             <nav className="space-y-1" aria-label="Main navigation">
-              <Link to="/" className={sidebarItemClass(isNavItemActive('/'))}>
+              <Link
+                to="/"
+                title="Home"
+                className={sidebarItemClass(isNavItemActive('/'))}
+              >
                 <span className="inline-flex items-center gap-3">
-                  <Home className="w-4 h-4 shrink-0" />
-                  <span>Home</span>
+                  <Home className="w-[18px] h-[18px] shrink-0" />
+                  <span className="hidden lg:inline">Home</span>
                 </span>
               </Link>
-              <Link to="/explore" className={sidebarItemClass(isNavItemActive('/explore'))}>
+              <Link
+                to="/explore"
+                title="Explore"
+                className={sidebarItemClass(isNavItemActive('/explore'))}
+              >
                 <span className="inline-flex items-center gap-3">
-                  <Compass className="w-4 h-4 shrink-0" />
-                  <span>Explore</span>
+                  <Compass className="w-[18px] h-[18px] shrink-0" />
+                  <span className="hidden lg:inline">Explore</span>
                 </span>
               </Link>
               <Link
                 to="/open-letterbox"
+                title="Unanswered"
                 className={sidebarItemClass(isNavItemActive('/open-letterbox'))}
               >
                 <span className="inline-flex items-center gap-3">
-                  <Inbox className="w-4 h-4 shrink-0" />
-                  <span>Open Letterbox</span>
+                  <Inbox className="w-[18px] h-[18px] shrink-0" />
+                  <span className="hidden lg:inline">Unanswered</span>
                 </span>
               </Link>
               <Link
                 to="/dashboard?tab=notifications"
+                title="Notifications"
                 className={sidebarItemClass(isNavItemActive('/dashboard', 'notifications'))}
               >
-                <span className="inline-flex items-center gap-3">
-                  <Bell className="w-4 h-4 shrink-0" />
-                  <span>Notifications</span>
+                <span className="relative inline-flex items-center gap-3">
+                  <Bell className="w-[18px] h-[18px] shrink-0" />
+                  <span className="hidden lg:inline">Notifications</span>
+                  {unreadCount > 0 && (
+                    <span className="lg:hidden -top-1 -right-1.5 absolute min-w-[14px] h-[14px] px-0.5 rounded-full bg-[#80545A] text-white text-[9px] flex items-center justify-center tabular-nums">
+                      {unreadCount > 9 ? '9+' : unreadCount}
+                    </span>
+                  )}
                 </span>
                 {unreadCount > 0 && (
-                  <span className="text-xs font-semibold tabular-nums text-[#80545A] dark:text-[#B8838A]">
+                  <span className="hidden lg:inline text-xs font-semibold tabular-nums text-[#80545A] dark:text-[#B8838A]">
                     {unreadCount}
                   </span>
                 )}
               </Link>
               <Link
                 to="/dashboard?tab=saved"
+                title="Saved Letters"
                 className={sidebarItemClass(isNavItemActive('/dashboard', 'saved'))}
               >
                 <span className="inline-flex items-center gap-3">
-                  <Bookmark className="w-4 h-4 shrink-0" />
-                  <span>Saved Letters</span>
+                  <Bookmark className="w-[18px] h-[18px] shrink-0" />
+                  <span className="hidden lg:inline">Saved Letters</span>
                 </span>
               </Link>
               <Link
                 to="/dashboard?tab=letters"
+                title="Profile"
                 className={sidebarItemClass(isNavItemActive('/dashboard', 'letters'))}
               >
                 <span className="inline-flex items-center gap-3">
-                  <FileText className="w-4 h-4 shrink-0" />
-                  <span>My Letters</span>
+                  <User className="w-[18px] h-[18px] shrink-0" />
+                  <span className="hidden lg:inline">Profile</span>
                 </span>
               </Link>
               <Link
                 to="/dashboard?tab=account"
+                title="Settings"
                 className={sidebarItemClass(isNavItemActive('/dashboard', 'account'))}
               >
                 <span className="inline-flex items-center gap-3">
-                  <Settings className="w-4 h-4 shrink-0" />
-                  <span>Settings</span>
+                  <Settings className="w-[18px] h-[18px] shrink-0" />
+                  <span className="hidden lg:inline">Settings</span>
                 </span>
               </Link>
               {profile?.isAdmin && (
                 <Link
                   to="/moderation"
+                  title="Moderation"
                   className={sidebarItemClass(isNavItemActive('/moderation'))}
                 >
                   <span className="inline-flex items-center gap-3">
-                    <ShieldCheck className="w-4 h-4 shrink-0" />
-                    <span>Moderation</span>
+                    <ShieldCheck className="w-[18px] h-[18px] shrink-0" />
+                    <span className="hidden lg:inline">Moderation</span>
                   </span>
                 </Link>
               )}
             </nav>
 
-            <Link
-              to="/write"
-              className={`w-full inline-flex items-center justify-center gap-2 rounded-md px-4 py-2.5 text-sm font-medium transition-colors whitespace-nowrap ${
-                isWriteRoute
-                  ? 'bg-[#6C454A] text-white'
-                  : 'bg-[#80545A] hover:bg-[#6C454A] text-white'
-              }`}
-            >
-              <PenLine className="w-4 h-4 shrink-0" />
-              <span>Write a Letter</span>
-            </Link>
+            <div className="space-y-2 pt-1">
+              <Link
+                to="/write"
+                title="Write a Letter"
+                className={`w-full inline-flex items-center justify-center gap-2 rounded-md px-3 lg:px-4 py-2.5 min-h-[42px] text-sm font-medium transition-colors whitespace-nowrap ${
+                  isWriteRoute
+                    ? 'bg-[#6C454A] text-white'
+                    : 'bg-[#80545A] hover:bg-[#6C454A] text-white'
+                }`}
+              >
+                <PenLine className="w-4 h-4 shrink-0" />
+                <span className="hidden lg:inline">Write a Letter</span>
+              </Link>
 
-            <button
-              type="button"
-              onClick={handleSurpriseMe}
-              disabled={surprising}
-              className="w-full inline-flex items-center justify-center gap-2 rounded-md border border-[#E8E5DF] dark:border-[#332F2A] bg-[#FFFFFF] dark:bg-[#201E1B] hover:border-[#80545A]/60 px-3 py-2 text-xs font-medium text-[#77736D] dark:text-[#A19B92] hover:text-[#252525] dark:hover:text-[#EAE6DF] transition-colors disabled:opacity-50"
-            >
-              <Shuffle className="w-3.5 h-3.5 text-[#80545A] dark:text-[#B8838A]" />
-              <span>{surprising ? 'Finding a letter…' : 'Surprise Me'}</span>
-            </button>
+              <button
+                type="button"
+                onClick={handleSurpriseMe}
+                disabled={surprising}
+                title="Random Letter"
+                className="w-full inline-flex items-center justify-center gap-2 rounded-md border border-[#E8E5DF] dark:border-[#332F2A] bg-[#FFFFFF] dark:bg-[#201E1B] hover:border-[#80545A]/60 px-2.5 lg:px-3 py-2 min-h-[38px] text-xs font-medium text-[#77736D] dark:text-[#A19B92] hover:text-[#252525] dark:hover:text-[#EAE6DF] transition-colors disabled:opacity-50"
+              >
+                <Shuffle className="w-3.5 h-3.5 text-[#80545A] dark:text-[#B8838A] shrink-0" />
+                <span className="hidden lg:inline">
+                  {surprising ? 'Finding a letter…' : 'Random Letter'}
+                </span>
+              </button>
+            </div>
           </div>
 
           <div className="pt-4 border-t border-[#E8E5DF] dark:border-[#332F2A] space-y-3">
-            <PWAInstallButton className="w-full justify-center" />
+            <div className="hidden lg:block">
+              <PWAInstallButton className="w-full justify-center" />
+            </div>
 
             {profile ? (
               <Link
                 to="/dashboard?tab=letters"
-                className="flex items-center gap-2.5 px-2.5 py-2 rounded-md hover:bg-[#F1EFE9] dark:hover:bg-[#201E1B] transition-colors"
+                title={profile.displayName}
+                className="flex items-center justify-center lg:justify-start gap-2.5 px-1.5 lg:px-2.5 py-2 rounded-md hover:bg-[#F1EFE9] dark:hover:bg-[#201E1B] transition-colors"
               >
-                <UserCheck className="w-4 h-4 text-[#80545A] dark:text-[#B8838A] shrink-0" />
-                <div className="min-w-0">
-                  <p className="text-xs font-medium truncate text-[#252525] dark:text-[#EAE6DF]">
+                <AuthorAvatar name={profile.displayName} size="sm" />
+                <div className="hidden lg:block min-w-0">
+                  <p className="text-xs font-semibold truncate text-[#252525] dark:text-[#EAE6DF]">
                     {profile.displayName}
                   </p>
                   <p className="text-[11px] text-[#77736D] dark:text-[#A19B92]">
-                    Anonymous identity
+                    {profile.recoveryEmailLinked && !profile.googleLinked
+                      ? 'Recovery email linked'
+                      : 'Anonymous identity'}
                   </p>
                 </div>
               </Link>
             ) : (
               <button
                 type="button"
+                title="Continue Anonymously"
                 onClick={() => openAuthPrompt('Create or continue your anonymous identity.')}
-                className="w-full text-left px-3 py-2 rounded-md border border-[#E8E5DF] dark:border-[#332F2A] bg-[#FFFFFF] dark:bg-[#201E1B] hover:border-[#80545A] text-xs font-medium transition-colors"
+                className="w-full flex items-center justify-center lg:justify-start gap-2 px-2.5 lg:px-3 py-2 min-h-[40px] rounded-md border border-[#E8E5DF] dark:border-[#332F2A] bg-[#FFFFFF] dark:bg-[#201E1B] hover:border-[#80545A] text-xs font-medium transition-colors"
               >
-                Continue Anonymously &rarr;
+                <User className="w-4 h-4 text-[#80545A] dark:text-[#B8838A] shrink-0 lg:hidden" />
+                <span className="hidden lg:inline">Sign In / Start &rarr;</span>
               </button>
             )}
 
-            <div className="flex items-center justify-between px-2 text-xs text-[#77736D] dark:text-[#A19B92]">
+            <div className="flex items-center justify-center lg:justify-between px-1 lg:px-2 text-xs text-[#77736D] dark:text-[#A19B92]">
               <button
                 type="button"
                 onClick={toggleTheme}
                 aria-label={`Switch to ${theme === 'dark' ? 'light' : 'dark'} theme`}
-                className="inline-flex items-center gap-1.5 hover:text-[#252525] dark:hover:text-[#EAE6DF] transition-colors"
+                title={theme === 'dark' ? 'Light theme' : 'Dark theme'}
+                className="inline-flex items-center gap-1.5 py-1 hover:text-[#252525] dark:hover:text-[#EAE6DF] transition-colors"
               >
-                {theme === 'dark' ? <Sun className="w-3.5 h-3.5" /> : <Moon className="w-3.5 h-3.5" />}
-                <span>{theme === 'dark' ? 'Light theme' : 'Dark theme'}</span>
+                {theme === 'dark' ? (
+                  <Sun className="w-3.5 h-3.5" />
+                ) : (
+                  <Moon className="w-3.5 h-3.5" />
+                )}
+                <span className="hidden lg:inline">
+                  {theme === 'dark' ? 'Light theme' : 'Dark theme'}
+                </span>
               </button>
               <Link
                 to="/setup"
-                className="hover:text-[#252525] dark:hover:text-[#EAE6DF] underline"
+                className="hidden lg:inline hover:text-[#252525] dark:hover:text-[#EAE6DF] underline"
               >
                 Setup
               </Link>
@@ -409,26 +484,38 @@ export function Layout({ children }: { children: React.ReactNode }) {
           </div>
         </aside>
 
-        {/* CENTRE COLUMN */}
-        <div className="flex-1 min-w-0 max-w-[680px] lg:border-x border-[#E8E5DF] dark:border-[#332F2A] min-h-screen flex flex-col">
+        {/* CENTRE FEED COLUMN */}
+        <div className="flex-1 min-w-0 max-w-[660px] md:border-x border-[#E8E5DF] dark:border-[#332F2A] min-h-screen flex flex-col">
+          {oauthError && (
+            <div
+              role="alert"
+              className="border-b border-[#80545A]/30 bg-[#FFFFFF] dark:bg-[#201E1B] px-4 sm:px-6 py-3 flex items-start justify-between gap-3 text-xs sm:text-sm text-[#80545A] dark:text-[#B8838A]"
+            >
+              <span>{oauthError}</span>
+              <button
+                type="button"
+                onClick={clearOAuthError}
+                aria-label="Dismiss authentication message"
+                className="p-0.5 text-[#77736D] hover:text-[#252525] dark:text-[#A19B92] dark:hover:text-[#EAE6DF] shrink-0"
+              >
+                <X className="w-4 h-4" />
+              </button>
+            </div>
+          )}
+
           <main className="flex-1">{children}</main>
 
-          {/* Quiet Editorial Footer inside Centre Column */}
-          <footer className="border-t border-[#E8E5DF] dark:border-[#332F2A] bg-[#F1EFE9]/40 dark:bg-[#201E1B]/40 px-4 sm:px-6 pt-7 pb-24 lg:pb-8">
-            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-              <div className="space-y-1">
-                <p className="font-editorial text-base font-semibold text-[#252525] dark:text-[#EAE6DF]">
+          {/* Compact Footer inside Centre Column */}
+          <footer className="border-t border-[#E8E5DF] dark:border-[#332F2A] bg-[#F1EFE9]/35 dark:bg-[#201E1B]/35 px-4 sm:px-6 pt-6 pb-20 md:pb-7">
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 text-xs text-[#77736D] dark:text-[#A19B92]">
+              <div>
+                <span className="font-editorial text-sm font-semibold text-[#252525] dark:text-[#EAE6DF]">
                   Dear Stranger
-                </p>
-                <p className="text-xs text-[#77736D] dark:text-[#A19B92]">
-                  Some things are easier to tell a stranger. Intended for adults 18+.
-                </p>
-                <p className="text-xs text-[#77736D] dark:text-[#A19B92]">
-                  &copy; {new Date().getFullYear()} Awesome Studios. All rights reserved.
-                </p>
+                </span>{' '}
+                · Adults 18+ · &copy; {new Date().getFullYear()} Awesome Studios
               </div>
 
-              <div className="flex flex-wrap items-center gap-x-4 gap-y-1.5 text-xs text-[#77736D] dark:text-[#A19B92]">
+              <div className="flex flex-wrap items-center gap-x-4 gap-y-1.5">
                 <Link to="/guidelines" className="hover:text-[#252525] dark:hover:text-[#EAE6DF]">
                   Guidelines
                 </Link>
@@ -451,26 +538,14 @@ export function Layout({ children }: { children: React.ReactNode }) {
           </footer>
         </div>
 
-        {/* RIGHT SIDEBAR (Desktop >= xl) */}
+        {/* RIGHT DISCOVERY SIDEBAR (Desktop >= xl) */}
         <RightSidebar />
       </div>
 
-      {/* Mobile Floating Write Action (hidden on /write) */}
-      {!isWriteRoute && (
-        <Link
-          to="/write"
-          aria-label="Write a Letter"
-          className="lg:hidden fixed bottom-[70px] right-4 z-30 inline-flex items-center gap-2 rounded-md bg-[#80545A] hover:bg-[#6C454A] text-white px-4 py-2.5 min-h-[44px] text-sm font-medium shadow-sm transition-colors"
-        >
-          <PenLine className="w-4 h-4 shrink-0" />
-          <span>Write</span>
-        </Link>
-      )}
-
-      {/* Mobile Fixed Bottom Navigation (< lg) */}
+      {/* Mobile Fixed Bottom Navigation (< md): Home, Explore, Write, Notifications, Profile */}
       <nav
         aria-label="Mobile bottom navigation"
-        className="lg:hidden fixed bottom-0 inset-x-0 z-40 h-[56px] border-t border-[#E8E5DF] dark:border-[#332F2A] bg-[#F8F7F3]/95 dark:bg-[#181715]/95 backdrop-blur-sm grid grid-cols-5 items-center pb-safe"
+        className="md:hidden fixed bottom-0 inset-x-0 z-40 h-[56px] border-t border-[#E8E5DF] dark:border-[#332F2A] bg-[#F8F7F3]/95 dark:bg-[#181715]/95 backdrop-blur-sm grid grid-cols-5 items-center pb-safe"
       >
         <Link
           to="/"
@@ -480,7 +555,7 @@ export function Layout({ children }: { children: React.ReactNode }) {
               : 'text-[#77736D] dark:text-[#A19B92]'
           }`}
         >
-          <Home className="w-4 h-4" />
+          <Home className="w-[18px] h-[18px]" />
           <span>Home</span>
         </Link>
         <Link
@@ -491,19 +566,23 @@ export function Layout({ children }: { children: React.ReactNode }) {
               : 'text-[#77736D] dark:text-[#A19B92]'
           }`}
         >
-          <Compass className="w-4 h-4" />
+          <Compass className="w-[18px] h-[18px]" />
           <span>Explore</span>
         </Link>
         <Link
-          to="/open-letterbox"
-          className={`min-h-[44px] flex flex-col items-center justify-center gap-0.5 text-[10px] font-medium ${
-            isNavItemActive('/open-letterbox')
-              ? 'text-[#80545A] dark:text-[#B8838A]'
-              : 'text-[#77736D] dark:text-[#A19B92]'
-          }`}
+          to="/write"
+          aria-label="Write a Letter"
+          className="min-h-[44px] flex flex-col items-center justify-center"
         >
-          <Inbox className="w-4 h-4" />
-          <span>Open</span>
+          <span
+            className={`inline-flex items-center justify-center w-10 h-10 rounded-full transition-colors ${
+              isWriteRoute
+                ? 'bg-[#6C454A] text-white'
+                : 'bg-[#80545A] text-white'
+            }`}
+          >
+            <PenLine className="w-[18px] h-[18px]" />
+          </span>
         </Link>
         <Link
           to="/dashboard?tab=notifications"
@@ -514,14 +593,14 @@ export function Layout({ children }: { children: React.ReactNode }) {
           }`}
         >
           <span className="relative inline-flex">
-            <Bell className="w-4 h-4" />
+            <Bell className="w-[18px] h-[18px]" />
             {unreadCount > 0 && (
-              <span className=" -top-1 -right-1.5 absolute min-w-[14px] h-[14px] px-0.5 rounded-full bg-[#80545A] text-white text-[9px] flex items-center justify-center tabular-nums">
+              <span className="-top-1 -right-1.5 absolute min-w-[14px] h-[14px] px-0.5 rounded-full bg-[#80545A] text-white text-[9px] flex items-center justify-center tabular-nums">
                 {unreadCount > 9 ? '9+' : unreadCount}
               </span>
             )}
           </span>
-          <span>Alerts</span>
+          <span>Notifications</span>
         </Link>
         <Link
           to="/dashboard?tab=letters"
@@ -531,7 +610,7 @@ export function Layout({ children }: { children: React.ReactNode }) {
               : 'text-[#77736D] dark:text-[#A19B92]'
           }`}
         >
-          <FileText className="w-4 h-4" />
+          <User className="w-[18px] h-[18px]" />
           <span>Profile</span>
         </Link>
       </nav>

@@ -8,13 +8,21 @@ export function getBrowserSupabaseClient(
   publishableKey: string | null
 ): SupabaseClient | null {
   if (!url || !publishableKey) return null;
-  const sig = `${url}:${publishableKey}`;
+  const isOAuthPopupCallback =
+    typeof window !== 'undefined' &&
+    Boolean(
+      window.opener &&
+        window.opener !== window &&
+        window.location.pathname.startsWith('/auth/callback')
+    );
+  const sig = `${url}:${publishableKey}:${isOAuthPopupCallback ? 'popup' : 'main'}`;
   if (!client || clientSig !== sig) {
     client = createClient(url, publishableKey, {
       auth: {
         persistSession: true,
         autoRefreshToken: true,
-        detectSessionInUrl: true,
+        detectSessionInUrl: !isOAuthPopupCallback,
+        flowType: 'pkce',
       },
     });
     clientSig = sig;

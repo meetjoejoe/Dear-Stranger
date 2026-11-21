@@ -1,5 +1,6 @@
 import React, { useCallback, useEffect, useState } from 'react';
 import { Link, useSearchParams } from 'react-router-dom';
+import { Bell, Check } from 'lucide-react';
 import type {
   BlockedAccountDTO,
   NotificationDTO,
@@ -10,7 +11,9 @@ import type {
 import { apiFetch } from '../lib/api.ts';
 import { useAuth } from '../context/AuthContext.tsx';
 import { useToast } from '../context/ToastContext.tsx';
-import { LetterCard, formatEditorialDate } from '../components/LetterCard.tsx';
+import { AuthorAvatar } from '../components/AuthorAvatar.tsx';
+import { LetterCard, formatEditorialDate, formatSocialTime } from '../components/LetterCard.tsx';
+import { GoogleMark } from '../components/GoogleMark.tsx';
 
 type DashboardTab =
   | 'letters'
@@ -64,6 +67,8 @@ export function DashboardPage() {
     openAuthPrompt,
     refreshProfile,
     refreshUnreadCount,
+    signInWithGoogle,
+    linkGoogleAccount,
     linkRecoveryEmail,
     signOut,
     toggleSandboxAdmin,
@@ -80,6 +85,9 @@ export function DashboardPage() {
   const [appealNote, setAppealNote] = useState('');
   const [confirmDeleteText, setConfirmDeleteText] = useState('');
   const [busyAction, setBusyAction] = useState(false);
+  const [googleBusy, setGoogleBusy] = useState(false);
+  const [googleLinkError, setGoogleLinkError] = useState<string | null>(null);
+  const [googleExternalUrl, setGoogleExternalUrl] = useState<string | null>(null);
 
   const selectTab = (next: DashboardTab) => {
     const updated = new URLSearchParams(searchParams);
@@ -94,7 +102,7 @@ export function DashboardPage() {
       const res = await apiFetch<DashboardPayload>('/api/dashboard', { token });
       setData(res);
     } catch (err) {
-      showToast(err instanceof Error ? err.message : 'Unable to load dashboard.', 'error');
+      showToast(err instanceof Error ? err.message : 'Unable to load profile.', 'error');
     } finally {
       setLoading(false);
     }
@@ -106,21 +114,65 @@ export function DashboardPage() {
   }, [profile, loadDashboard]);
 
   if (!token || !profile) {
+    const handleDeskGoogle = async () => {
+      setGoogleLinkError(null);
+      setGoogleExternalUrl(null);
+      setGoogleBusy(true);
+      try {
+        const res = await signInWithGoogle({ returnTo: '/dashboard?tab=account' });
+        if (res?.externalRedirectUrl) {
+          setGoogleExternalUrl(res.externalRedirectUrl);
+        }
+      } catch (err) {
+        const msg = err instanceof Error ? err.message : 'Could not start Google sign-in.';
+        setGoogleLinkError(msg);
+        showToast(msg, 'error');
+      } finally {
+        setGoogleBusy(false);
+      }
+    };
+
     return (
-      <div className="px-4 sm:px-8 py-14">
-        <div className="rounded-md border border-[#E8E5DF] dark:border-[#332F2A] bg-[#FFFFFF] dark:bg-[#201E1B] p-8 text-center space-y-4">
-          <h1 className="font-editorial text-3xl font-semibold">Your Personal Desk</h1>
+      <div className="px-4 sm:px-6 py-12">
+        <div className="rounded-lg border border-[#E8E5DF] dark:border-[#332F2A] bg-[#FFFFFF] dark:bg-[#201E1B] p-6 sm:p-8 text-center space-y-5">
+          <h1 className="font-editorial text-3xl font-semibold">Your Anonymous Profile</h1>
           <p className="text-sm text-[#77736D] dark:text-[#A19B92] max-w-md mx-auto leading-relaxed">
-            Sign in with an anonymous identity or a linked recovery email to view your letters,
-            replies, saved bookmarks, notifications, and privacy settings.
+            Sign in with an anonymous identity, Google, or a linked recovery email to manage your
+            letters, replies, notifications, saved bookmarks, and privacy controls.
           </p>
-          <button
-            type="button"
-            onClick={() => openAuthPrompt('Create or continue your anonymous identity.')}
-            className="rounded-md bg-[#80545A] hover:bg-[#6C454A] text-white px-6 py-2.5 text-sm font-medium"
-          >
-            Continue Anonymously
-          </button>
+          <div className="flex flex-wrap items-center justify-center gap-3">
+            <button
+              type="button"
+              disabled={googleBusy || !config?.supabaseConfigured}
+              onClick={() => void handleDeskGoogle()}
+              className="inline-flex items-center justify-center gap-2 rounded-md border border-[#E8E5DF] dark:border-[#332F2A] bg-[#FFFFFF] dark:bg-[#282521] hover:border-[#80545A]/60 px-5 py-2.5 min-h-[42px] text-sm font-medium disabled:opacity-50"
+            >
+              <GoogleMark />
+              <span>{googleBusy ? 'Redirecting…' : 'Continue with Google'}</span>
+            </button>
+            <button
+              type="button"
+              onClick={() => openAuthPrompt('Create or continue your anonymous identity.')}
+              className="rounded-md bg-[#80545A] hover:bg-[#6C454A] text-white px-6 py-2.5 min-h-[42px] text-sm font-medium"
+            >
+              Continue Anonymously
+            </button>
+          </div>
+          {googleExternalUrl && (
+            <div className="text-xs text-[#77736D] dark:text-[#A19B92]">
+              <a
+                href={googleExternalUrl}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="underline text-[#80545A] dark:text-[#B8838A]"
+              >
+                Open Google Sign-In in new tab &rarr;
+              </a>
+            </div>
+          )}
+          {googleLinkError && (
+            <p className="text-xs text-[#80545A] dark:text-[#B8838A]">{googleLinkError}</p>
+          )}
         </div>
       </div>
     );
@@ -234,6 +286,29 @@ export function DashboardPage() {
     }
   };
 
+  const handleConnectGoogle = async () => {
+    setGoogleLinkError(null);
+    setGoogleExternalUrl(null);
+    setGoogleBusy(true);
+    try {
+      const res = await linkGoogleAccount('/dashboard?tab=account');
+      if (res?.externalRedirectUrl) {
+        setGoogleExternalUrl(res.externalRedirectUrl);
+      } else {
+        showToast(
+          'Google account connected. Your anonymous nickname and letters remain preserved.',
+          'success'
+        );
+      }
+    } catch (err) {
+      const msg = err instanceof Error ? err.message : 'Could not connect Google account.';
+      setGoogleLinkError(msg);
+      showToast(msg, 'error');
+    } finally {
+      setGoogleBusy(false);
+    }
+  };
+
   const handlePrefToggle = async (key: keyof NotificationPreferencesDTO, value: boolean) => {
     if (!data) return;
     const next = { ...data.preferences, [key]: value };
@@ -299,50 +374,84 @@ export function DashboardPage() {
   const unreadCount = data?.notifications.filter((n) => !n.isRead).length || 0;
 
   const tabs: Array<[DashboardTab, string]> = [
-    ['letters', `My Letters (${data?.myLetters.length ?? 0})`],
+    ['letters', `Letters (${data?.myLetters.length ?? 0})`],
     ['replies', `Replies (${data?.myReplies.length ?? 0})`],
     ['conversations', `Threads (${data?.conversations.length ?? 0})`],
     ['saved', `Saved (${data?.savedLetters.length ?? 0})`],
     ['notifications', `Notifications${unreadCount > 0 ? ` (${unreadCount})` : ''}`],
     ['account', 'Settings'],
-    ['privacy', 'Privacy & Safety'],
+    ['privacy', 'Safety & Privacy'],
   ];
+
+  const pageTitle =
+    tab === 'notifications'
+      ? 'Notifications'
+      : tab === 'saved'
+      ? 'Saved Letters'
+      : tab === 'account'
+      ? 'Settings'
+      : tab === 'privacy'
+      ? 'Safety & Privacy'
+      : 'Profile';
 
   return (
     <div>
-      {/* Header */}
-      <div className="px-4 sm:px-6 py-6 border-b border-[#E8E5DF] dark:border-[#332F2A] flex flex-wrap items-end justify-between gap-4">
-        <div>
-          <p className="text-[11px] uppercase tracking-widest text-[#80545A] dark:text-[#B8838A] font-medium">
-            Anonymous Identity
-          </p>
-          <h1 className="font-editorial text-2xl sm:text-3xl font-semibold mt-0.5">
-            {profile.displayName}
-          </h1>
-          <p className="text-xs text-[#77736D] dark:text-[#A19B92] mt-1">
-            Status: {profile.accountStatus} ·{' '}
-            {profile.recoveryEmailLinked
-              ? 'Recovery email linked'
-              : 'Unlinked session (link an email under Settings to prevent loss)'}
-          </p>
-        </div>
-
-        <div className="flex items-center gap-2.5">
+      {/* Sticky Top Profile / Desk Bar */}
+      <div className="sticky top-[52px] md:top-0 z-20 px-4 sm:px-6 py-3 border-b border-[#E8E5DF] dark:border-[#332F2A] bg-[#F8F7F3]/95 dark:bg-[#181715]/95 backdrop-blur-sm flex items-center justify-between gap-3">
+        <h1 className="font-editorial text-2xl font-semibold leading-none">{pageTitle}</h1>
+        <div className="flex items-center gap-2 shrink-0">
           {profile.isAdmin && (
             <Link
               to="/moderation"
-              className="rounded-md border border-[#80545A] text-[#80545A] dark:border-[#B8838A] dark:text-[#B8838A] px-3 py-1.5 text-xs font-medium whitespace-nowrap shrink-0"
+              className="rounded-md border border-[#80545A] text-[#80545A] dark:border-[#B8838A] dark:text-[#B8838A] px-3 py-1.5 min-h-[34px] inline-flex items-center text-xs font-medium whitespace-nowrap"
             >
-              Moderation Console
+              Moderation
             </Link>
           )}
           <button
             type="button"
             onClick={() => void signOut()}
-            className="rounded-md border border-[#E8E5DF] dark:border-[#332F2A] px-3 py-1.5 text-xs text-[#77736D] hover:text-[#252525] dark:text-[#A19B92] dark:hover:text-[#EAE6DF] whitespace-nowrap shrink-0"
+            className="rounded-md border border-[#E8E5DF] dark:border-[#332F2A] bg-[#FFFFFF] dark:bg-[#201E1B] px-3 py-1.5 min-h-[34px] text-xs text-[#77736D] hover:text-[#252525] dark:text-[#A19B92] dark:hover:text-[#EAE6DF] whitespace-nowrap"
           >
             Sign Out
           </button>
+        </div>
+      </div>
+
+      {/* Social Profile Header Card */}
+      <div className="px-4 sm:px-6 py-5 border-b border-[#E8E5DF] dark:border-[#332F2A] bg-[#FFFFFF]/70 dark:bg-[#201E1B]/50 flex items-start gap-3.5">
+        <AuthorAvatar name={profile.displayName} size="lg" />
+        <div className="min-w-0 flex-1">
+          <p className="text-[11px] font-medium text-[#80545A] dark:text-[#B8838A]">
+            Anonymous Identity
+          </p>
+          <h2 className="font-editorial text-2xl sm:text-3xl font-semibold leading-tight truncate">
+            {profile.displayName}
+          </h2>
+          <p className="text-xs text-[#77736D] dark:text-[#A19B92] mt-1">
+            Status: {profile.accountStatus}
+            {!profile.googleLinked && profile.recoveryEmailLinked
+              ? ' · Recovery email linked'
+              : !profile.googleLinked && !profile.recoveryEmailLinked
+              ? ' · Unlinked session (protect under Settings)'
+              : ''}
+          </p>
+          {data && (
+            <p className="text-xs text-[#77736D] dark:text-[#A19B92] mt-2 tabular-nums">
+              <strong className="font-semibold text-[#252525] dark:text-[#EAE6DF]">
+                {data.myLetters.length}
+              </strong>{' '}
+              {data.myLetters.length === 1 ? 'letter' : 'letters'} ·{' '}
+              <strong className="font-semibold text-[#252525] dark:text-[#EAE6DF]">
+                {data.myReplies.length}
+              </strong>{' '}
+              {data.myReplies.length === 1 ? 'reply' : 'replies'} ·{' '}
+              <strong className="font-semibold text-[#252525] dark:text-[#EAE6DF]">
+                {data.savedLetters.length}
+              </strong>{' '}
+              saved privately
+            </p>
+          )}
         </div>
       </div>
 
@@ -356,14 +465,14 @@ export function DashboardPage() {
             <p className="text-[#77736D] dark:text-[#A19B92]">Reason: {profile.restrictionReason}</p>
           )}
           <p className="text-xs text-[#77736D] dark:text-[#A19B92]">
-            You can submit an appeal under Privacy &amp; Safety.
+            You can submit an appeal under Safety &amp; Privacy.
           </p>
         </div>
       )}
 
-      {/* Editorial Underline Tabs */}
+      {/* Social Underline Tabs */}
       <div
-        className="border-b border-[#E8E5DF] dark:border-[#332F2A] px-4 sm:px-6 overflow-x-auto scrollbar-none flex items-center gap-5"
+        className="border-b border-[#E8E5DF] dark:border-[#332F2A] px-4 sm:px-6 overflow-x-auto scrollbar-none flex items-center gap-5 bg-[#F8F7F3] dark:bg-[#181715]"
         role="tablist"
       >
         {tabs.map(([id, label]) => (
@@ -386,7 +495,7 @@ export function DashboardPage() {
 
       {loading && !data ? (
         <div className="p-6">
-          <div className="h-44 rounded-md border border-[#E8E5DF] dark:border-[#332F2A] bg-[#FFFFFF] dark:bg-[#201E1B] animate-pulse" />
+          <div className="h-44 rounded-lg border border-[#E8E5DF] dark:border-[#332F2A] bg-[#FFFFFF] dark:bg-[#201E1B] animate-pulse" />
         </div>
       ) : (
         <div>
@@ -399,7 +508,7 @@ export function DashboardPage() {
                   </p>
                   <Link
                     to="/write"
-                    className="inline-block rounded-md bg-[#80545A] text-white px-5 py-2 text-sm font-medium"
+                    className="inline-block rounded-md bg-[#80545A] text-white px-5 py-2.5 text-sm font-medium"
                   >
                     Write a Letter
                   </Link>
@@ -413,7 +522,7 @@ export function DashboardPage() {
                       variant="timeline"
                       onUpdated={() => void loadDashboard()}
                     />
-                    <div className="flex flex-wrap items-center gap-4 px-4 sm:px-6 pb-4 text-xs text-[#77736D] dark:text-[#A19B92]">
+                    <div className="flex flex-wrap items-center gap-4 px-4 sm:px-6 pb-3.5 text-xs text-[#77736D] dark:text-[#A19B92]">
                       <Link
                         to={`/write?edit=${l.id}`}
                         className="underline hover:text-[#252525] dark:hover:text-[#EAE6DF]"
@@ -447,26 +556,26 @@ export function DashboardPage() {
             <div className="divide-y divide-[#E8E5DF] dark:divide-[#332F2A]">
               {!data || data.myReplies.length === 0 ? (
                 <div className="px-4 sm:px-6 py-12 text-center text-sm text-[#77736D] dark:text-[#A19B92]">
-                  You haven&apos;t written any replies yet.
+                  You haven&apos;t posted any replies yet.
                 </div>
               ) : (
                 data.myReplies.map((r) => (
-                  <div key={r.id} className="px-4 sm:px-6 py-5 space-y-2">
-                    <div className="flex items-center justify-between text-xs text-[#77736D] dark:text-[#A19B92]">
-                      <span>
-                        On{' '}
+                  <div key={r.id} className="px-4 sm:px-6 py-4 space-y-2">
+                    <div className="flex items-center justify-between gap-3 text-xs text-[#77736D] dark:text-[#A19B92]">
+                      <span className="truncate">
+                        Reply on{' '}
                         <Link
                           to={`/letters/${r.letterId}`}
-                          className="underline text-[#252525] dark:text-[#EAE6DF]"
+                          className="font-medium underline text-[#252525] dark:text-[#EAE6DF]"
                         >
                           {r.letterTitle || 'Untitled letter'}
                         </Link>{' '}
-                        · {formatEditorialDate(r.createdAt)}
+                        · {formatSocialTime(r.createdAt)}
                       </span>
                       <button
                         type="button"
                         onClick={() => void handleDeleteReply(r.id)}
-                        className="hover:text-[#80545A] underline"
+                        className="hover:text-[#80545A] underline shrink-0"
                       >
                         Delete
                       </button>
@@ -501,14 +610,14 @@ export function DashboardPage() {
             <div>
               {!data || data.savedLetters.length === 0 ? (
                 <div className="px-4 sm:px-6 py-12 text-center text-sm text-[#77736D] dark:text-[#A19B92]">
-                  Saved letters are strictly private to you. Bookmark any letter while reading or
-                  browsing to keep it here.
+                  Saved letters are strictly private to you. Bookmark any letter while reading to
+                  keep it here.
                 </div>
               ) : (
                 data.savedLetters.map((l) => (
                   <div key={l.id} className="border-b border-[#E8E5DF] dark:border-[#332F2A]">
                     <LetterCard letter={l} onUpdated={() => void loadDashboard()} />
-                    <div className="px-4 sm:px-6 pb-4">
+                    <div className="px-4 sm:px-6 pb-3.5">
                       <button
                         type="button"
                         onClick={() => void handleUnsave(l.id)}
@@ -526,49 +635,78 @@ export function DashboardPage() {
           {tab === 'notifications' && (
             <div className="divide-y divide-[#E8E5DF] dark:divide-[#332F2A]">
               {data && data.notifications.length > 0 && unreadCount > 0 && (
-                <div className="px-4 sm:px-6 py-3 flex justify-end bg-[#F1EFE9]/40 dark:bg-[#201E1B]/40">
+                <div className="px-4 sm:px-6 py-3 flex items-center justify-between bg-[#F1EFE9]/40 dark:bg-[#201E1B]/40">
+                  <span className="text-xs text-[#77736D] dark:text-[#A19B92] tabular-nums">
+                    {unreadCount} unread {unreadCount === 1 ? 'notification' : 'notifications'}
+                  </span>
                   <button
                     type="button"
                     onClick={() => void handleMarkNotificationsRead()}
-                    className="text-xs underline text-[#80545A] dark:text-[#B8838A]"
+                    className="inline-flex items-center gap-1 text-xs font-medium underline text-[#80545A] dark:text-[#B8838A]"
                   >
-                    Mark all as read
+                    <Check className="w-3.5 h-3.5" />
+                    <span>Mark all read</span>
                   </button>
                 </div>
               )}
 
               {!data || data.notifications.length === 0 ? (
                 <div className="px-4 sm:px-6 py-12 text-center text-sm text-[#77736D] dark:text-[#A19B92]">
-                  No notifications yet.
+                  No notifications yet. Replies to your letters and conversations will appear here.
                 </div>
               ) : (
                 data.notifications.map((n) => (
                   <div
                     key={n.id}
-                    className={`px-4 sm:px-6 py-5 flex items-start justify-between gap-4 ${
-                      n.isRead ? '' : 'bg-[#FFFFFF]/80 dark:bg-[#201E1B]/80'
+                    className={`px-4 sm:px-6 py-4 flex items-start justify-between gap-3 ${
+                      n.isRead ? '' : 'bg-[#FFFFFF] dark:bg-[#201E1B]'
                     }`}
                   >
-                    <div className="space-y-1">
-                      <p className="text-sm font-medium">{n.title}</p>
-                      <p className="text-sm text-[#77736D] dark:text-[#A19B92]">{n.body}</p>
-                      <div className="flex items-center gap-3 text-xs text-[#77736D] dark:text-[#A19B92] pt-1">
-                        <span>{formatEditorialDate(n.createdAt)}</span>
-                        {n.relatedLetterId && (
-                          <Link
-                            to={`/letters/${n.relatedLetterId}`}
-                            className="underline text-[#80545A] dark:text-[#B8838A]"
-                          >
-                            Open letter
-                          </Link>
-                        )}
+                    <div className="flex items-start gap-3 min-w-0">
+                      <span
+                        aria-hidden="true"
+                        className={`mt-0.5 w-8 h-8 rounded-full inline-flex items-center justify-center shrink-0 border border-[#E8E5DF] dark:border-[#332F2A] ${
+                          n.isRead
+                            ? 'bg-[#F1EFE9] dark:bg-[#282521] text-[#77736D] dark:text-[#A19B92]'
+                            : 'bg-[#80545A]/12 dark:bg-[#B8838A]/18 text-[#80545A] dark:text-[#B8838A]'
+                        }`}
+                      >
+                        <Bell className="w-4 h-4" />
+                      </span>
+
+                      <div className="min-w-0 space-y-1">
+                        <div className="flex flex-wrap items-center gap-x-2 gap-y-0.5">
+                          <p className="text-sm font-semibold text-[#252525] dark:text-[#EAE6DF]">
+                            {n.title}
+                          </p>
+                          {!n.isRead && (
+                            <span className="text-[11px] font-semibold text-[#80545A] dark:text-[#B8838A]">
+                              Unread
+                            </span>
+                          )}
+                        </div>
+                        <p className="text-sm text-[#77736D] dark:text-[#A19B92] leading-relaxed">
+                          {n.body}
+                        </p>
+                        <div className="flex items-center gap-3 text-xs text-[#77736D] dark:text-[#A19B92] pt-0.5">
+                          <span className="tabular-nums">{formatSocialTime(n.createdAt)}</span>
+                          {n.relatedLetterId && (
+                            <Link
+                              to={`/letters/${n.relatedLetterId}`}
+                              className="font-medium underline text-[#80545A] dark:text-[#B8838A]"
+                            >
+                              View thread &rarr;
+                            </Link>
+                          )}
+                        </div>
                       </div>
                     </div>
+
                     {!n.isRead && (
                       <button
                         type="button"
                         onClick={() => void handleMarkNotificationsRead(n.id)}
-                        className="text-xs underline shrink-0 text-[#80545A] dark:text-[#B8838A]"
+                        className="text-xs underline shrink-0 text-[#80545A] dark:text-[#B8838A] py-1"
                       >
                         Mark read
                       </button>
@@ -580,11 +718,11 @@ export function DashboardPage() {
           )}
 
           {tab === 'account' && (
-            <div className="p-4 sm:p-6 space-y-6">
+            <div className="p-4 sm:p-6 space-y-5">
               {/* Display Nickname */}
               <form
                 onSubmit={handleSaveNickname}
-                className="rounded-md border border-[#E8E5DF] dark:border-[#332F2A] bg-[#FFFFFF] dark:bg-[#201E1B] p-5 sm:p-6 space-y-4"
+                className="rounded-lg border border-[#E8E5DF] dark:border-[#332F2A] bg-[#FFFFFF] dark:bg-[#201E1B] p-5 space-y-3.5"
               >
                 <h2 className="font-editorial text-2xl font-semibold">
                   Anonymous Display Nickname
@@ -603,25 +741,94 @@ export function DashboardPage() {
                   <button
                     type="submit"
                     disabled={busyAction}
-                    className="rounded-md bg-[#80545A] hover:bg-[#6C454A] text-white px-4 py-2 text-sm font-medium disabled:opacity-50 whitespace-nowrap shrink-0"
+                    className="rounded-md bg-[#80545A] hover:bg-[#6C454A] text-white px-4 py-2 min-h-[38px] text-sm font-medium disabled:opacity-50 whitespace-nowrap shrink-0"
                   >
                     Update
                   </button>
                 </div>
               </form>
 
+              {/* Google & Authentication Status */}
+              <div className="rounded-lg border border-[#E8E5DF] dark:border-[#332F2A] bg-[#FFFFFF] dark:bg-[#201E1B] p-5 space-y-3.5">
+                <div className="flex flex-wrap items-start justify-between gap-2">
+                  <div>
+                    <h2 className="font-editorial text-2xl font-semibold">
+                      Google &amp; Account Connection
+                    </h2>
+                    <p className="text-xs text-[#77736D] dark:text-[#A19B92] mt-1 leading-relaxed">
+                      {profile.googleLinked
+                        ? 'Your anonymous identity is protected with Google sign-in. Your Google email and real name are never shared publicly.'
+                        : 'Connect Google to preserve your anonymous pen name, letters, replies, and saved bookmarks across devices without revealing your Google identity.'}
+                    </p>
+                  </div>
+                  <span className="text-xs font-semibold text-[#80545A] dark:text-[#B8838A] whitespace-nowrap">
+                    {profile.googleLinked
+                      ? 'Connected with Google'
+                      : profile.recoveryEmailLinked
+                      ? 'Recovery Email Active'
+                      : 'Anonymous Session'}
+                  </span>
+                </div>
+
+                {!profile.googleLinked && (
+                  <div className="space-y-2.5 pt-1">
+                    <button
+                      type="button"
+                      disabled={busyAction || googleBusy || !config?.supabaseConfigured}
+                      onClick={() => void handleConnectGoogle()}
+                      className="inline-flex items-center justify-center gap-2.5 rounded-md border border-[#E8E5DF] dark:border-[#332F2A] bg-[#FFFFFF] dark:bg-[#282521] hover:border-[#80545A]/60 px-4 py-2 min-h-[40px] text-sm font-medium text-[#252525] dark:text-[#EAE6DF] disabled:opacity-50 transition-colors"
+                    >
+                      <GoogleMark />
+                      <span>
+                        {googleBusy ? 'Redirecting to Google…' : 'Connect Google Account'}
+                      </span>
+                    </button>
+
+                    {!config?.supabaseConfigured && (
+                      <p className="text-xs text-[#77736D] dark:text-[#A19B92]">
+                        Connecting a Google account requires Supabase Auth credentials to be
+                        configured.
+                      </p>
+                    )}
+
+                    {googleExternalUrl && (
+                      <div className="rounded-md border border-[#E8E5DF] dark:border-[#332F2A] bg-[#F8F7F3] dark:bg-[#181715] p-3 text-xs space-y-1.5">
+                        <p className="text-[#77736D] dark:text-[#A19B92]">
+                          Your browser blocked the automatic window. Open Google Connection in a
+                          new tab:
+                        </p>
+                        <a
+                          href={googleExternalUrl}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="inline-flex items-center gap-2 underline font-medium text-[#80545A] dark:text-[#B8838A]"
+                        >
+                          Open Google Connection Window &rarr;
+                        </a>
+                      </div>
+                    )}
+
+                    {googleLinkError && (
+                      <p className="text-xs text-[#80545A] dark:text-[#B8838A] leading-relaxed">
+                        {googleLinkError}
+                      </p>
+                    )}
+                  </div>
+                )}
+              </div>
+
               {/* Recovery Email Linking */}
               <form
                 onSubmit={handleLinkEmail}
-                className="rounded-md border border-[#E8E5DF] dark:border-[#332F2A] bg-[#FFFFFF] dark:bg-[#201E1B] p-5 sm:p-6 space-y-4"
+                className="rounded-lg border border-[#E8E5DF] dark:border-[#332F2A] bg-[#FFFFFF] dark:bg-[#201E1B] p-5 space-y-3.5"
               >
                 <h2 className="font-editorial text-2xl font-semibold">
-                  Account Recovery Protection
+                  Account Recovery Email
                 </h2>
                 <p className="text-xs text-[#77736D] dark:text-[#A19B92] leading-relaxed">
                   {profile.recoveryEmailLinked
                     ? 'A verified recovery email is linked to this identity. Your email is never shown publicly.'
-                    : 'Unlinked anonymous sessions are lost if browser storage is cleared. Link an email address to keep your letters and replies recoverable without changing your anonymous display name.'}
+                    : 'Unlinked anonymous sessions are lost if browser storage is cleared. Link an email address to recover your letters and replies anytime.'}
                 </p>
                 <div className="flex flex-col sm:flex-row gap-2">
                   <input
@@ -634,7 +841,7 @@ export function DashboardPage() {
                   <button
                     type="submit"
                     disabled={busyAction}
-                    className="rounded-md border border-[#80545A] text-[#80545A] dark:border-[#B8838A] dark:text-[#B8838A] px-4 py-2 text-sm font-medium whitespace-nowrap shrink-0"
+                    className="rounded-md border border-[#80545A] text-[#80545A] dark:border-[#B8838A] dark:text-[#B8838A] px-4 py-2 min-h-[38px] text-sm font-medium whitespace-nowrap shrink-0"
                   >
                     Link Email
                   </button>
@@ -642,7 +849,7 @@ export function DashboardPage() {
               </form>
 
               {/* Appearance & Notification Preferences */}
-              <div className="rounded-md border border-[#E8E5DF] dark:border-[#332F2A] bg-[#FFFFFF] dark:bg-[#201E1B] p-5 sm:p-6 space-y-4">
+              <div className="rounded-lg border border-[#E8E5DF] dark:border-[#332F2A] bg-[#FFFFFF] dark:bg-[#201E1B] p-5 space-y-4">
                 <h2 className="font-editorial text-2xl font-semibold">Theme &amp; Notifications</h2>
                 <div className="flex flex-wrap items-center justify-between gap-3 text-sm">
                   <span>Color theme</span>
@@ -650,9 +857,9 @@ export function DashboardPage() {
                     <button
                       type="button"
                       onClick={() => void setTheme('light')}
-                      className={`px-3 py-1.5 rounded text-xs border ${
+                      className={`px-3 py-1.5 rounded-md text-xs border ${
                         theme === 'light'
-                          ? 'border-[#80545A] font-medium'
+                          ? 'border-[#80545A] font-semibold'
                           : 'border-[#E8E5DF] dark:border-[#332F2A]'
                       }`}
                     >
@@ -661,9 +868,9 @@ export function DashboardPage() {
                     <button
                       type="button"
                       onClick={() => void setTheme('dark')}
-                      className={`px-3 py-1.5 rounded text-xs border ${
+                      className={`px-3 py-1.5 rounded-md text-xs border ${
                         theme === 'dark'
-                          ? 'border-[#B8838A] font-medium'
+                          ? 'border-[#B8838A] font-semibold'
                           : 'border-[#E8E5DF] dark:border-[#332F2A]'
                       }`}
                     >
@@ -724,7 +931,7 @@ export function DashboardPage() {
               </div>
 
               {/* Account Deletion */}
-              <div className="rounded-md border border-[#80545A]/50 bg-[#FFFFFF] dark:bg-[#201E1B] p-5 sm:p-6 space-y-3">
+              <div className="rounded-lg border border-[#80545A]/50 bg-[#FFFFFF] dark:bg-[#201E1B] p-5 space-y-3">
                 <h2 className="font-editorial text-2xl font-semibold text-[#80545A] dark:text-[#B8838A]">
                   Delete Account
                 </h2>
@@ -744,7 +951,7 @@ export function DashboardPage() {
                     type="button"
                     disabled={confirmDeleteText !== 'DELETE' || busyAction}
                     onClick={() => void handleDeleteAccount()}
-                    className="rounded-md bg-[#80545A] text-white px-4 py-2 text-sm font-medium disabled:opacity-40 whitespace-nowrap shrink-0"
+                    className="rounded-md bg-[#80545A] text-white px-4 py-2 min-h-[38px] text-sm font-medium disabled:opacity-40 whitespace-nowrap shrink-0"
                   >
                     Delete Account
                   </button>
@@ -754,8 +961,8 @@ export function DashboardPage() {
           )}
 
           {tab === 'privacy' && (
-            <div className="p-4 sm:p-6 space-y-6">
-              <div className="rounded-md border border-[#E8E5DF] dark:border-[#332F2A] bg-[#FFFFFF] dark:bg-[#201E1B] p-5 sm:p-6 space-y-3">
+            <div className="p-4 sm:p-6 space-y-5">
+              <div className="rounded-lg border border-[#E8E5DF] dark:border-[#332F2A] bg-[#FFFFFF] dark:bg-[#201E1B] p-5 space-y-3">
                 <h2 className="font-editorial text-2xl font-semibold">
                   Blocked Anonymous Accounts
                 </h2>
@@ -783,7 +990,7 @@ export function DashboardPage() {
 
               <form
                 onSubmit={handleAppeal}
-                className="rounded-md border border-[#E8E5DF] dark:border-[#332F2A] bg-[#FFFFFF] dark:bg-[#201E1B] p-5 sm:p-6 space-y-3"
+                className="rounded-lg border border-[#E8E5DF] dark:border-[#332F2A] bg-[#FFFFFF] dark:bg-[#201E1B] p-5 space-y-3"
               >
                 <h2 className="font-editorial text-2xl font-semibold">Moderation Appeals</h2>
                 <p className="text-xs text-[#77736D] dark:text-[#A19B92]">
@@ -800,7 +1007,7 @@ export function DashboardPage() {
                 <button
                   type="submit"
                   disabled={busyAction || appealNote.trim().length < 10}
-                  className="rounded-md bg-[#80545A] text-white px-4 py-2 text-sm font-medium disabled:opacity-40"
+                  className="rounded-md bg-[#80545A] text-white px-4 py-2 min-h-[38px] text-sm font-medium disabled:opacity-40"
                 >
                   Submit Appeal
                 </button>
@@ -835,7 +1042,7 @@ export function DashboardPage() {
               </form>
 
               {config && !config.supabaseConfigured && (
-                <div className="rounded-md border border-[#E8E5DF] dark:border-[#332F2A] bg-[#F1EFE9] dark:bg-[#282521] p-5 space-y-2 text-xs">
+                <div className="rounded-lg border border-[#E8E5DF] dark:border-[#332F2A] bg-[#F1EFE9] dark:bg-[#282521] p-5 space-y-2 text-xs">
                   <p className="font-medium text-[#252525] dark:text-[#EAE6DF]">
                     Sandbox Preview Testing Only
                   </p>

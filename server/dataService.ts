@@ -2,6 +2,7 @@ import crypto from 'node:crypto';
 import type {
   AccountStatus,
   AggregateMetricsDTO,
+  AuthProviderName,
   BlockedAccountDTO,
   CategoryDTO,
   LetterStatus,
@@ -119,6 +120,42 @@ function computeOpenLetterboxLabel(categorySlug: string, body: string, title: st
 // ---------------------------------------------------------------------------
 // AUTH RESOLUTION & PROFILE PROVISIONING
 // ---------------------------------------------------------------------------
+export function deriveAuthProvidersFromSupabaseUser(user: {
+  is_anonymous?: boolean;
+  email?: string | null;
+  app_metadata?: { provider?: string; providers?: unknown };
+  identities?: Array<{ provider?: string }>;
+}): { authProviders: AuthProviderName[]; googleLinked: boolean; isAnonymous: boolean } {
+  const raw = new Set<string>();
+  if (typeof user.app_metadata?.provider === 'string') {
+    raw.add(user.app_metadata.provider);
+  }
+  if (Array.isArray(user.app_metadata?.providers)) {
+    for (const p of user.app_metadata.providers) {
+      if (typeof p === 'string') raw.add(p);
+    }
+  }
+  if (Array.isArray(user.identities)) {
+    for (const identity of user.identities) {
+      if (typeof identity?.provider === 'string') raw.add(identity.provider);
+    }
+  }
+
+  const providers: AuthProviderName[] = [];
+  if (raw.has('google')) providers.push('google');
+  if (raw.has('email')) providers.push('email');
+  if (raw.has('anonymous') || Boolean(user.is_anonymous)) providers.push('anonymous');
+
+  const googleLinked = providers.includes('google');
+  const isAnonymous = Boolean(user.is_anonymous ?? (!user.email && !googleLinked));
+
+  if (providers.length === 0) {
+    providers.push(isAnonymous ? 'anonymous' : 'email');
+  }
+
+  return { authProviders: providers, googleLinked, isAnonymous };
+}
+
 export async function resolveAuthContext(bearerToken: string | null): Promise<AuthContext | null> {
   if (!bearerToken) return null;
 
@@ -141,8 +178,16 @@ export async function resolveAuthContext(bearerToken: string | null): Promise<Au
 
   const user = userData.user;
   const cfg = getServerConfig();
-  const isAnonymous = Boolean((user as unknown as { is_anonymous?: boolean }).is_anonymous ?? !user.email);
-  const recoveryEmailLinked = Boolean(user.email && user.email_confirmed_at);
+  const { authProviders, googleLinked, isAnonymous } = deriveAuthProvidersFromSupabaseUser(
+    user as unknown as {
+      is_anonymous?: boolean;
+      email?: string | null;
+      app_metadata?: { provider?: string; providers?: unknown };
+      identities?: Array<{ provider?: string }>;
+    }
+  );
+  // Distinguish manually linked email/OTP recovery from Google-only sign-in while keeping notifications & recovery status accurate
+  const recoveryEmailLinked = Boolean(user.email && user.email_confirmed_at && authProviders.includes('email'));
 
   const { data: existingProfile } = await admin
     .from('profiles')
@@ -244,6 +289,8 @@ export async function resolveAuthContext(bearerToken: string | null): Promise<Au
       ageConfirmedAt: profileRow.age_confirmed_at,
       isAnonymous: profileRow.is_anonymous,
       recoveryEmailLinked: profileRow.recovery_email_linked,
+      googleLinked,
+      authProviders,
       restrictionReason: profileRow.restriction_reason ?? null,
       isAdmin: Boolean(adminRow),
       adminRole: (adminRow?.role as ProfileDTO['adminRole']) ?? null,
@@ -253,6 +300,7 @@ export async function resolveAuthContext(bearerToken: string | null): Promise<Au
 }
 
 function toProfileDTO(p: SandboxProfile): ProfileDTO {
+  const authProviders: AuthProviderName[] = p.recoveryEmailLinked ? ['anonymous', 'email'] : ['anonymous'];
   return {
     id: p.id,
     displayName: p.displayName,
@@ -262,6 +310,8 @@ function toProfileDTO(p: SandboxProfile): ProfileDTO {
     ageConfirmedAt: p.ageConfirmedAt,
     isAnonymous: p.isAnonymous,
     recoveryEmailLinked: p.recoveryEmailLinked,
+    googleLinked: false,
+    authProviders,
     restrictionReason: p.restrictionReason,
     isAdmin: p.isAdmin,
     adminRole: p.adminRole,

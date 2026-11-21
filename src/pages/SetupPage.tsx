@@ -36,16 +36,19 @@ export function SetupPage() {
   };
 
   return (
-    <div className="px-4 sm:px-6 py-8 sm:py-10 space-y-8">
-      <div className="pb-6 border-b border-[#E8E5DF] dark:border-[#332F2A]">
-        <p className="text-[11px] uppercase tracking-widest text-[#80545A] dark:text-[#B8838A] font-medium">
+    <div>
+      <div className="sticky top-[52px] md:top-0 z-20 px-4 sm:px-6 py-4 border-b border-[#E8E5DF] dark:border-[#332F2A] bg-[#F8F7F3]/95 dark:bg-[#181715]/95 backdrop-blur-sm space-y-1">
+        <p className="text-[11px] font-medium text-[#80545A] dark:text-[#B8838A]">
           Environment &amp; Integration Status
         </p>
-        <h1 className="font-editorial text-3xl sm:text-4xl font-semibold mt-1">Platform Setup</h1>
+        <h1 className="font-editorial text-2xl sm:text-3xl font-semibold leading-none">
+          Platform Setup
+        </h1>
       </div>
 
-      {/* Live Status Summary */}
-      <div className="rounded-md border border-[#E8E5DF] dark:border-[#332F2A] bg-[#FFFFFF] dark:bg-[#201E1B] p-5 sm:p-6 space-y-4">
+      <div className="px-4 sm:px-6 py-6 space-y-6">
+        {/* Live Status Summary */}
+        <div className="rounded-lg border border-[#E8E5DF] dark:border-[#332F2A] bg-[#FFFFFF] dark:bg-[#201E1B] p-5 sm:p-6 space-y-4">
         <h2 className="font-editorial text-2xl font-semibold">Live Configuration Check</h2>
         <dl className="divide-y divide-[#E8E5DF] dark:divide-[#332F2A] text-sm">
           <div className="py-2.5 flex flex-col sm:flex-row sm:justify-between gap-1 sm:gap-4">
@@ -118,11 +121,13 @@ export function SetupPage() {
         <h2 className="font-editorial text-2xl font-semibold">Connecting Live Supabase</h2>
         <ol className="list-decimal pl-5 space-y-2 text-[#77736D] dark:text-[#A19B92] break-words">
           <li>Create a Supabase project and enable <strong>Anonymous Sign-Ins</strong> under Authentication &rarr; Providers.</li>
+          <li>To enable <strong>Continue with Google</strong>, enable <strong>Google</strong> under Authentication &rarr; Providers (with your Google Cloud OAuth Client ID and Secret using standard <code>openid email profile</code> scopes), enable <strong>Manual Linking</strong> under Authentication &rarr; Settings so anonymous sessions can upgrade to Google, and allow <code className="break-all">/auth/callback</code> under URL Configuration &rarr; Redirect URLs.</li>
           <li>Apply both SQL migrations in <code className="break-all">supabase/migrations/001_initial_schema.sql</code> and <code className="break-all">002_rls_and_functions.sql</code>.</li>
           <li>Set <code className="break-all">SUPABASE_URL</code>, <code className="break-all">SUPABASE_PUBLISHABLE_KEY</code>, and <code className="break-all">SUPABASE_SECRET_KEY</code> in your server environment (Vercel / Cloud Run).</li>
           <li>Optionally set <code className="break-all">ADMIN_BOOTSTRAP_EMAILS</code> or insert your user UUID into <code className="break-all">public.admin_users</code> to grant Moderation Console access.</li>
           <li>Optionally set <code className="break-all">RESEND_API_KEY</code> and <code className="break-all">TURNSTILE_SITE_KEY</code> / <code className="break-all">TURNSTILE_SECRET_KEY</code> for email notifications and CAPTCHA protection.</li>
         </ol>
+      </div>
       </div>
     </div>
   );

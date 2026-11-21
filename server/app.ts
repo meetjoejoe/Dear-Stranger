@@ -239,6 +239,55 @@ export async function createApiApp() {
   );
 
   // -------------------------------------------------------------------------
+  // POPUP OAUTH RELAY (For embedded iframe previews like AI Studio)
+  // -------------------------------------------------------------------------
+  app.get(['/auth/callback', '/auth/callback/'], (req, res, next) => {
+    if (req.query.popup !== '1') {
+      next();
+      return;
+    }
+    res
+      .status(200)
+      .set('Content-Type', 'text/html; charset=utf-8')
+      .send(`<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width,initial-scale=1" />
+    <title>Completing Google Sign-In — Dear Stranger</title>
+  </head>
+  <body style="font-family:system-ui,-apple-system,sans-serif;background:#F8F7F3;color:#252525;display:flex;align-items:center;justify-content:center;min-height:100vh;margin:0;padding:24px;text-align:center;">
+    <div>
+      <p style="font-size:15px;margin:0 0 8px;">Completing sign-in with Dear Stranger…</p>
+      <p style="font-size:13px;color:#77736D;margin:0;">This window will close automatically.</p>
+    </div>
+    <script>
+      (function () {
+        if (window.opener && window.opener !== window) {
+          try {
+            window.opener.postMessage(
+              {
+                type: 'DS_OAUTH_CALLBACK',
+                search: window.location.search || '',
+                hash: window.location.hash || ''
+              },
+              window.location.origin
+            );
+          } catch (e) {}
+          window.close();
+        } else {
+          var params = new URLSearchParams(window.location.search || '');
+          params.delete('popup');
+          var qs = params.toString();
+          window.location.replace('/auth/callback' + (qs ? '?' + qs : '') + (window.location.hash || ''));
+        }
+      })();
+    </script>
+  </body>
+</html>`);
+  });
+
+  // -------------------------------------------------------------------------
   // CATEGORIES & DISCOVERY
   // -------------------------------------------------------------------------
   app.get(

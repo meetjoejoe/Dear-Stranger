@@ -199,21 +199,22 @@ export function ModerationPage() {
   };
 
   return (
-    <div className="px-4 sm:px-6 py-8 sm:py-10 space-y-10">
-      <div className="pb-6 border-b border-[#E8E5DF] dark:border-[#332F2A]">
-        <p className="text-[11px] uppercase tracking-widest text-[#80545A] dark:text-[#B8838A] font-medium">
+    <div>
+      <div className="sticky top-[52px] md:top-0 z-20 px-4 sm:px-6 py-4 border-b border-[#E8E5DF] dark:border-[#332F2A] bg-[#F8F7F3]/95 dark:bg-[#181715]/95 backdrop-blur-sm space-y-1">
+        <p className="text-[11px] font-medium text-[#80545A] dark:text-[#B8838A]">
           Server-Verified Moderator Access ({profile.adminRole})
         </p>
-        <h1 className="font-editorial text-3xl sm:text-4xl font-semibold mt-1">
+        <h1 className="font-editorial text-2xl sm:text-3xl font-semibold leading-none">
           Moderation &amp; Editorial Console
         </h1>
       </div>
 
-      {loading ? (
-        <div className="h-64 rounded-md border border-[#E8E5DF] dark:border-[#332F2A] bg-[#FFFFFF] dark:bg-[#201E1B] animate-pulse" />
-      ) : error || !data ? (
-        <p className="text-sm text-[#80545A]">{error}</p>
-      ) : (
+      <div className="px-4 sm:px-6 py-6 space-y-8">
+        {loading ? (
+          <div className="h-64 rounded-lg border border-[#E8E5DF] dark:border-[#332F2A] bg-[#FFFFFF] dark:bg-[#201E1B] animate-pulse" />
+        ) : error || !data ? (
+          <p className="text-sm text-[#80545A]">{error}</p>
+        ) : (
         <>
           {/* Aggregate Non-PII Metrics */}
           <section className="space-y-3">
@@ -625,6 +626,7 @@ export function ModerationPage() {
           </section>
         </>
       )}
+      </div>
     </div>
   );
 }

@@ -1,11 +1,12 @@
 import React, { useEffect, useState } from 'react';
 import { Link, useLocation, useNavigate } from 'react-router-dom';
-import { ArrowRight, BookOpen, MailOpen, Shuffle } from 'lucide-react';
+import { ArrowRight, BookOpen, MailOpen, Search, Shuffle } from 'lucide-react';
 import type { PublicLetterDTO } from '../shared/types.ts';
 import { apiFetch } from '../lib/api.ts';
 import { useAuth } from '../context/AuthContext.tsx';
 import { useToast } from '../context/ToastContext.tsx';
-import { formatEditorialDate } from './LetterCard.tsx';
+import { AuthorAvatar } from './AuthorAvatar.tsx';
+import { formatSocialTime } from './LetterCard.tsx';
 
 export function RightSidebar() {
   const { config, categories, token } = useAuth();
@@ -13,6 +14,7 @@ export function RightSidebar() {
   const location = useLocation();
   const navigate = useNavigate();
 
+  const [quickQuery, setQuickQuery] = useState('');
   const [lotd, setLotd] = useState<PublicLetterDTO | null>(null);
   const [lotdNote, setLotdNote] = useState<string | null>(null);
   const [openSuggestions, setOpenSuggestions] = useState<PublicLetterDTO[]>([]);
@@ -25,7 +27,7 @@ export function RightSidebar() {
     if (!config || !dbReady || isWriteRoute) return;
     let mounted = true;
 
-    async function loadEditorialRail() {
+    async function loadDiscoveryRail() {
       const [lotdResult, openResult] = await Promise.allSettled([
         apiFetch<{ letter: PublicLetterDTO | null; editorNote: string | null }>(
           '/api/letters/letter-of-the-day',
@@ -45,11 +47,21 @@ export function RightSidebar() {
       }
     }
 
-    void loadEditorialRail();
+    void loadDiscoveryRail();
     return () => {
       mounted = false;
     };
   }, [config, dbReady, isWriteRoute, token]);
+
+  const handleQuickSearch = (e: React.FormEvent) => {
+    e.preventDefault();
+    const trimmed = quickQuery.trim();
+    if (!trimmed) {
+      navigate('/explore');
+      return;
+    }
+    navigate(`/explore?q=${encodeURIComponent(trimmed)}`);
+  };
 
   const handleSurpriseMe = async () => {
     if (surprising) return;
@@ -74,21 +86,21 @@ export function RightSidebar() {
     return (
       <aside
         aria-label="Writing guidance"
-        className="hidden xl:flex flex-col w-80 shrink-0 sticky top-0 h-screen overflow-y-auto px-6 py-8 space-y-6"
+        className="hidden xl:flex flex-col w-80 shrink-0 sticky top-0 h-screen overflow-y-auto px-5 py-6 space-y-5"
       >
-        <div className="rounded-md border border-[#E8E5DF] dark:border-[#332F2A] bg-[#FFFFFF] dark:bg-[#201E1B] p-5 space-y-3">
-          <p className="text-[11px] uppercase tracking-widest text-[#80545A] dark:text-[#B8838A] font-medium">
-            Before You Send
+        <div className="rounded-lg border border-[#E8E5DF] dark:border-[#332F2A] bg-[#FFFFFF] dark:bg-[#201E1B] p-5 space-y-3">
+          <p className="text-xs font-semibold text-[#80545A] dark:text-[#B8838A]">
+            Before you post
           </p>
           <p className="font-editorial text-xl font-semibold leading-snug">
-            Write for one thoughtful reader.
+            Write for one thoughtful stranger.
           </p>
           <ul className="space-y-2 text-xs text-[#77736D] dark:text-[#A19B92] leading-relaxed">
             <li>• Leave out real names, phone numbers, addresses, and workplaces.</li>
-            <li>• Choose Public to appear in the community timeline, or Unlisted for link-only sharing.</li>
-            <li>• Unfinished drafts stay private in your local browser or account dashboard.</li>
+            <li>• Public letters appear in the timeline; Unlisted letters open only by direct link.</li>
+            <li>• Unfinished drafts stay private in your browser or profile desk.</li>
           </ul>
-          <div className="pt-2 border-t border-[#E8E5DF] dark:border-[#332F2A] flex items-center gap-4 text-xs">
+          <div className="pt-3 border-t border-[#E8E5DF] dark:border-[#332F2A] flex items-center gap-4 text-xs">
             <Link
               to="/guidelines"
               className="text-[#80545A] dark:text-[#B8838A] hover:underline font-medium"
@@ -107,18 +119,31 @@ export function RightSidebar() {
     );
   }
 
-  const curatedCollections = categories.slice(0, 4);
+  const curatedTopics = categories.slice(0, 4);
 
   return (
     <aside
-      aria-label="Editorial discovery"
-      className="hidden xl:flex flex-col w-80 shrink-0 sticky top-0 h-screen overflow-y-auto px-5 py-6 space-y-5"
+      aria-label="Social discovery"
+      className="hidden xl:flex flex-col w-[328px] shrink-0 sticky top-0 h-screen overflow-y-auto px-5 py-5 space-y-4"
     >
-      {/* Letter of the Day */}
+      {/* Social Quick Search */}
+      <form onSubmit={handleQuickSearch} className="relative">
+        <Search className="w-4 h-4 text-[#77736D] dark:text-[#A19B92] absolute left-3.5 top-1/2 -translate-y-1/2 pointer-events-none" />
+        <input
+          type="search"
+          value={quickQuery}
+          onChange={(e) => setQuickQuery(e.target.value)}
+          placeholder="Search letters & topics…"
+          aria-label="Quick search public letters"
+          className="w-full rounded-lg border border-[#E8E5DF] dark:border-[#332F2A] bg-[#FFFFFF] dark:bg-[#201E1B] pl-10 pr-4 py-2.5 text-sm placeholder:text-[#77736D] dark:placeholder:text-[#A19B92] focus:border-[#80545A] dark:focus:border-[#B8838A] focus:outline-none"
+        />
+      </form>
+
+      {/* Letter of the Day Spotlight */}
       {lotd && (
-        <section className="rounded-md border border-[#E8E5DF] dark:border-[#332F2A] bg-[#FFFFFF] dark:bg-[#201E1B] p-5 space-y-2.5">
+        <section className="rounded-lg border border-[#E8E5DF] dark:border-[#332F2A] bg-[#FFFFFF] dark:bg-[#201E1B] p-4 space-y-2.5">
           <div className="flex items-center justify-between gap-2">
-            <span className="text-[11px] uppercase tracking-widest text-[#80545A] dark:text-[#B8838A] font-medium">
+            <span className="text-xs font-semibold text-[#80545A] dark:text-[#B8838A]">
               Letter of the Day
             </span>
             <BookOpen className="w-3.5 h-3.5 text-[#80545A] dark:text-[#B8838A]" aria-hidden="true" />
@@ -136,27 +161,80 @@ export function RightSidebar() {
               {lotd.body}
             </p>
           </Link>
-          <div className="pt-2 border-t border-[#E8E5DF] dark:border-[#332F2A] flex items-center justify-between text-xs text-[#77736D] dark:text-[#A19B92]">
-            <span>{lotd.authorDisplayName}</span>
+          <div className="pt-2 border-t border-[#E8E5DF] dark:border-[#332F2A] flex items-center justify-between gap-2 text-xs text-[#77736D] dark:text-[#A19B92]">
+            <span className="inline-flex items-center gap-2 min-w-0">
+              <AuthorAvatar name={lotd.authorDisplayName} size="sm" />
+              <span className="truncate">{lotd.authorDisplayName}</span>
+            </span>
             <Link
               to={`/letters/${lotd.id}`}
               className="font-medium text-[#80545A] dark:text-[#B8838A] hover:underline whitespace-nowrap shrink-0"
             >
-              Read letter &rarr;
+              Read thread &rarr;
             </Link>
           </div>
         </section>
       )}
 
-      {/* Explore Topics */}
-      <section className="rounded-md border border-[#E8E5DF] dark:border-[#332F2A] bg-[#FFFFFF] dark:bg-[#201E1B] p-5 space-y-3">
+      {/* Unanswered / Open Letterbox Suggestions */}
+      {openSuggestions.length > 0 && (
+        <section className="rounded-lg border border-[#E8E5DF] dark:border-[#332F2A] bg-[#FFFFFF] dark:bg-[#201E1B] p-4 space-y-2.5">
+          <div className="flex items-center justify-between gap-2">
+            <div>
+              <h2 className="text-sm font-semibold text-[#252525] dark:text-[#EAE6DF]">
+                Needs a First Reply
+              </h2>
+              <p className="text-[11px] text-[#77736D] dark:text-[#A19B92]">
+                Open Letterbox · waiting to be heard
+              </p>
+            </div>
+            <MailOpen className="w-4 h-4 text-[#80545A] dark:text-[#B8838A] shrink-0" aria-hidden="true" />
+          </div>
+          <div className="divide-y divide-[#E8E5DF] dark:divide-[#332F2A]">
+            {openSuggestions.map((letter) => (
+              <Link
+                key={letter.id}
+                to={`/letters/${letter.id}`}
+                className="block py-2.5 group space-y-1"
+              >
+                <div className="flex items-center justify-between gap-2 text-[11px] text-[#77736D] dark:text-[#A19B92]">
+                  <span className="font-medium text-[#252525] dark:text-[#EAE6DF] truncate">
+                    {letter.authorDisplayName}
+                  </span>
+                  <span className="shrink-0 tabular-nums">
+                    {formatSocialTime(letter.publishedAt || letter.createdAt)}
+                  </span>
+                </div>
+                <p className="font-editorial text-base font-semibold leading-snug text-[#252525] dark:text-[#EAE6DF] group-hover:text-[#80545A] dark:group-hover:text-[#B8838A] transition-colors line-clamp-1">
+                  {letter.title || letter.body.slice(0, 60)}
+                </p>
+                <p className="text-xs text-[#77736D] dark:text-[#A19B92] line-clamp-2 leading-relaxed">
+                  {letter.body}
+                </p>
+              </Link>
+            ))}
+          </div>
+          <Link
+            to="/open-letterbox"
+            className="inline-flex items-center gap-1 text-xs font-medium text-[#80545A] dark:text-[#B8838A] hover:underline pt-1"
+          >
+            <span>See all unanswered</span>
+            <ArrowRight className="w-3 h-3" />
+          </Link>
+        </section>
+      )}
+
+      {/* Topics & Random Discovery */}
+      <section className="rounded-lg border border-[#E8E5DF] dark:border-[#332F2A] bg-[#FFFFFF] dark:bg-[#201E1B] p-4 space-y-3">
         <div className="flex items-center justify-between gap-2">
-          <h2 className="font-editorial text-xl font-semibold">Explore Topics</h2>
+          <h2 className="text-sm font-semibold text-[#252525] dark:text-[#EAE6DF]">
+            Explore Topics
+          </h2>
           <button
             type="button"
             onClick={handleSurpriseMe}
             disabled={surprising}
-            className="inline-flex items-center gap-1 text-xs text-[#80545A] dark:text-[#B8838A] hover:underline whitespace-nowrap shrink-0 disabled:opacity-50"
+            className="inline-flex items-center gap-1 text-xs font-medium text-[#80545A] dark:text-[#B8838A] hover:underline whitespace-nowrap shrink-0 disabled:opacity-50"
           >
             <Shuffle className="w-3 h-3" />
             {surprising ? 'Choosing…' : 'Surprise Me'}
@@ -167,74 +245,34 @@ export function RightSidebar() {
             <li key={cat.id}>
               <Link
                 to={`/explore?category=${cat.slug}`}
-                className="py-2 flex items-center justify-between gap-2 text-sm text-[#252525] dark:text-[#EAE6DF] hover:text-[#80545A] dark:hover:text-[#B8838A] transition-colors group"
+                className="py-2 flex items-center justify-between gap-2 text-xs sm:text-sm text-[#252525] dark:text-[#EAE6DF] hover:text-[#80545A] dark:hover:text-[#B8838A] transition-colors group"
               >
                 <span className="truncate">{cat.name}</span>
-                <ArrowRight className="w-3.5 h-3.5 text-[#77736D] dark:text-[#A19B92] opacity-60 group-hover:opacity-100 shrink-0" />
+                <ArrowRight className="w-3.5 h-3.5 text-[#77736D] dark:text-[#A19B92] opacity-55 group-hover:opacity-100 shrink-0" />
               </Link>
             </li>
           ))}
         </ul>
       </section>
 
-      {/* Open Letterbox Suggestions */}
-      {openSuggestions.length > 0 && (
-        <section className="rounded-md border border-[#E8E5DF] dark:border-[#332F2A] bg-[#FFFFFF] dark:bg-[#201E1B] p-5 space-y-3">
-          <div className="flex items-center justify-between gap-2">
-            <div>
-              <p className="text-[11px] uppercase tracking-widest text-[#80545A] dark:text-[#B8838A] font-medium">
-                Awaiting a Reply
-              </p>
-              <h2 className="font-editorial text-xl font-semibold">Open Letterbox</h2>
-            </div>
-            <MailOpen className="w-4 h-4 text-[#77736D] dark:text-[#A19B92]" aria-hidden="true" />
-          </div>
-          <div className="divide-y divide-[#E8E5DF] dark:divide-[#332F2A]">
-            {openSuggestions.map((letter) => (
-              <Link
-                key={letter.id}
-                to={`/letters/${letter.id}`}
-                className="block py-2.5 group space-y-1"
-              >
-                <p className="font-editorial text-base font-semibold leading-snug text-[#252525] dark:text-[#EAE6DF] group-hover:text-[#80545A] dark:group-hover:text-[#B8838A] transition-colors line-clamp-1">
-                  {letter.title || letter.body.slice(0, 60)}
-                </p>
-                <p className="text-xs text-[#77736D] dark:text-[#A19B92] line-clamp-2">
-                  {letter.body}
-                </p>
-                <p className="text-[11px] text-[#77736D] dark:text-[#A19B92]">
-                  {letter.authorDisplayName} · {formatEditorialDate(letter.publishedAt || letter.createdAt)}
-                </p>
-              </Link>
-            ))}
-          </div>
-          <Link
-            to="/open-letterbox"
-            className="inline-block text-xs font-medium text-[#80545A] dark:text-[#B8838A] hover:underline pt-1"
-          >
-            Browse Open Letterbox &rarr;
-          </Link>
-        </section>
-      )}
-
       {/* Curated Collections */}
-      {curatedCollections.length > 0 && (
-        <section className="rounded-md border border-[#E8E5DF] dark:border-[#332F2A] bg-[#F1EFE9]/60 dark:bg-[#201E1B] p-5 space-y-3">
-          <p className="text-[11px] uppercase tracking-widest text-[#77736D] dark:text-[#A19B92] font-medium">
+      {curatedTopics.length > 0 && (
+        <section className="rounded-lg border border-[#E8E5DF] dark:border-[#332F2A] bg-[#F1EFE9]/55 dark:bg-[#201E1B] p-4 space-y-2.5">
+          <h2 className="text-xs font-semibold text-[#77736D] dark:text-[#A19B92]">
             Curated Reading Rooms
-          </p>
+          </h2>
           <div className="space-y-2.5">
-            {curatedCollections.map((cat) => (
+            {curatedTopics.map((cat) => (
               <Link
                 key={cat.id}
                 to={`/explore?category=${cat.slug}`}
                 className="block group"
               >
-                <p className="text-sm font-medium text-[#252525] dark:text-[#EAE6DF] group-hover:text-[#80545A] dark:group-hover:text-[#B8838A] transition-colors">
+                <p className="text-xs font-semibold text-[#252525] dark:text-[#EAE6DF] group-hover:text-[#80545A] dark:group-hover:text-[#B8838A] transition-colors">
                   {cat.name}
                 </p>
                 {cat.description && (
-                  <p className="text-xs text-[#77736D] dark:text-[#A19B92] leading-snug line-clamp-2">
+                  <p className="text-[11px] text-[#77736D] dark:text-[#A19B92] leading-snug line-clamp-2">
                     {cat.description}
                   </p>
                 )}
@@ -244,16 +282,16 @@ export function RightSidebar() {
         </section>
       )}
 
-      {/* Community Guidelines & Copyright */}
-      <section className="px-1 space-y-2.5 text-xs text-[#77736D] dark:text-[#A19B92] leading-relaxed">
+      {/* Quiet Community Guidelines Reminder */}
+      <section className="px-1 space-y-2 text-[11px] text-[#77736D] dark:text-[#A19B92] leading-relaxed">
         <p className="font-medium text-[#252525] dark:text-[#EAE6DF]">
-          Quiet correspondence for adults 18+
+          Safe anonymous conversation · 18+
         </p>
         <p>
-          Speak gently, guard anonymity, and never share identifying private details. No follower
-          counts or trending algorithms.
+          Letters are shared without follower counts or ranking scores. Keep personal identifiers
+          private and reply with care.
         </p>
-        <div className="flex flex-wrap items-center gap-x-3 gap-y-1 pt-1">
+        <div className="flex flex-wrap items-center gap-x-3 gap-y-1">
           <Link to="/guidelines" className="hover:text-[#252525] dark:hover:text-[#EAE6DF] underline">
             Guidelines
           </Link>
@@ -264,7 +302,6 @@ export function RightSidebar() {
             Setup
           </Link>
         </div>
-        <p className="pt-1">&copy; {new Date().getFullYear()} Awesome Studios. All rights reserved.</p>
       </section>
     </aside>
   );

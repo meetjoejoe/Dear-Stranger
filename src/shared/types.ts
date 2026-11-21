@@ -118,6 +118,8 @@ export interface ReplyDTO {
   children: ReplyDTO[];
 }
 
+export type AuthProviderName = 'anonymous' | 'google' | 'email';
+
 export interface ProfileDTO {
   id: string;
   displayName: string;
@@ -127,6 +129,8 @@ export interface ProfileDTO {
   ageConfirmedAt: string | null;
   isAnonymous: boolean;
   recoveryEmailLinked: boolean;
+  googleLinked?: boolean;
+  authProviders?: AuthProviderName[];
   restrictionReason: string | null;
   isAdmin: boolean;
   adminRole: 'moderator' | 'admin' | 'super_admin' | null;

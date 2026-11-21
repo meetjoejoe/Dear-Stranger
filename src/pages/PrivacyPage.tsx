@@ -2,20 +2,22 @@ import React from 'react';
 
 export function PrivacyPage() {
   return (
-    <div className="px-4 sm:px-6 py-8 sm:py-10 space-y-8">
-      <div className="pb-6 border-b border-[#E8E5DF] dark:border-[#332F2A]">
-        <p className="text-[11px] uppercase tracking-widest text-[#80545A] dark:text-[#B8838A] font-medium">
+    <div>
+      <div className="sticky top-[52px] md:top-0 z-20 px-4 sm:px-6 py-4 border-b border-[#E8E5DF] dark:border-[#332F2A] bg-[#F8F7F3]/95 dark:bg-[#181715]/95 backdrop-blur-sm space-y-1">
+        <p className="text-[11px] font-medium text-[#80545A] dark:text-[#B8838A]">
           Data Stewardship
         </p>
-        <h1 className="font-editorial text-3xl sm:text-4xl font-semibold mt-1">Privacy Policy</h1>
-        <p className="text-sm text-[#77736D] dark:text-[#A19B92] mt-2 leading-relaxed">
+        <h1 className="font-editorial text-2xl sm:text-3xl font-semibold leading-none">
+          Privacy Policy
+        </h1>
+        <p className="text-xs sm:text-sm text-[#77736D] dark:text-[#A19B92] pt-1 leading-relaxed">
           Designed with data minimisation and the Nigeria Data Protection Act (NDPA) principles in
           mind. This policy is provided transparently and does not claim independent legal
           certification.
         </p>
       </div>
 
-      <div className="space-y-6 text-[15px] leading-[1.78] max-w-prose">
+      <div className="px-4 sm:px-6 py-6 space-y-6 text-[15px] leading-[1.78] max-w-prose">
         <section className="space-y-2">
           <h2 className="font-editorial text-2xl font-semibold">1. Information we collect</h2>
           <p className="text-[#77736D] dark:text-[#A19B92]">
